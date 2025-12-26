@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+// src/features/Products/components/ProductCard.jsx
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,21 +8,16 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 const money = (n) => `$${Number(n || 0).toFixed(2)}`;
 
 export default function ProductCard({ p, isAr, name, onAdd, adding }) {
-  // ✅ المعتمد: stock_quantity
   const stockNum = useMemo(() => Number(p?.stock_quantity ?? 0), [p?.stock_quantity]);
   const outOfStock = stockNum <= 0;
 
-  const demoImage = `https://picsum.photos/seed/${p?.id || "demo"}/600/420`;
+  // ✅ صور من الباك فقط
+  const imgSrc = useMemo(() => {
+    const first = Array.isArray(p?.images) && p.images.length ? p.images[0] : null;
+    return first || p?.cover_image || null;
+  }, [p]);
 
-  const firstImage =
-    Array.isArray(p?.images) && p.images.length ? p.images[0] : null;
-
-  const imgSrc =
-    firstImage ||
-    p?.image ||
-    p?.image_url ||
-    p?.imageUrl ||
-    demoImage;
+  const [imgError, setImgError] = useState(false);
 
   return (
     <Card
@@ -33,18 +29,22 @@ export default function ProductCard({ p, isAr, name, onAdd, adding }) {
     >
       <div className="relative">
         <div className="aspect-[16/10] w-full bg-[#FBF7F1] overflow-hidden">
-          <img
-            src={imgSrc}
-            alt={name}
-            className={`h-full w-full object-cover transition-transform duration-500 ${
-              outOfStock ? "grayscale" : "group-hover:scale-[1.06]"
-            }`}
-            draggable="false"
-            loading="lazy"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
+          {imgSrc && !imgError ? (
+            <img
+              src={imgSrc}
+              alt={name}
+              className={`h-full w-full object-cover transition-transform duration-500 ${
+                outOfStock ? "grayscale" : "group-hover:scale-[1.06]"
+              }`}
+              draggable="false"
+              loading="lazy"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="h-full w-full grid place-items-center text-[#2F2A24]/40 font-semibold text-sm">
+              {isAr ? "لا يوجد صورة" : "No image"}
+            </div>
+          )}
         </div>
 
         {outOfStock ? (

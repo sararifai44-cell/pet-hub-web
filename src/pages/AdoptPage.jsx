@@ -1,141 +1,112 @@
 // src/pages/AdoptPage.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import Navbar from "@/components/common/Navbar";
+import { Search, PackageSearch, Filter } from "lucide-react";
 
-import { Search, Heart, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+
+import AdoptFilters from "@/features/pets/components/AdoptFilters";
+import PetCard from "@/features/pets/components/PetCard";
+import { usePetFilters } from "@/features/pets/hooks/usePetFilters";
 
 import { useGetPetsQuery } from "@/features/pets/petsApiSlice";
 import { useGetPetTypesQuery } from "@/features/petTypes/petTypesApiSlice";
 import { useGetPetBreedsQuery } from "@/features/petBreeds/petBreedsApiSlice";
 
-function useIsArabic() {
-  const [isAr, setIsAr] = useState(false);
-  useEffect(() => {
-    const lang = (navigator.language || "").toLowerCase();
-    setIsAr(lang.startsWith("ar"));
-  }, []);
-  return isAr;
-}
+const asArray = (res) =>
+  Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
 
-const asArray = (res) => (Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : []);
 const pickName = (obj, isAr) => {
   if (!obj) return "";
   if (typeof obj === "string") return obj;
-  if (typeof obj === "object") return isAr ? (obj.name_ar || obj.name) : (obj.name_en || obj.name);
+  if (typeof obj === "object") return isAr ? obj.name_ar || obj.name : obj.name_en || obj.name;
   return "";
 };
 
-function getAgeGroupFromDob(dobStr) {
-  if (!dobStr) return "all";
-  const dob = new Date(dobStr);
-  if (Number.isNaN(dob.getTime())) return "all";
-  const now = new Date();
-  let years = now.getFullYear() - dob.getFullYear();
-  const m = now.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) years--;
-  if (years < 1) return "baby";
-  if (years < 3) return "young";
-  return "adult";
-}
-
 export default function AdoptPage() {
-  const isAr = useIsArabic();
-  const t = (en, ar) => (isAr ? ar : en);
   const location = useLocation();
 
-  // pagination
+  const [isAr] = useState(() =>
+    typeof window !== "undefined"
+      ? (navigator.language || "").toLowerCase().startsWith("ar")
+      : false
+  );
+  const t = (en, ar) => (isAr ? ar : en);
+
+  // pagination (نفس الربط)
   const [page, setPage] = useState(1);
 
-  // data
-  const { data: petsRes, isLoading, isError, error, refetch, isFetching } = useGetPetsQuery({ page });
+  // data (نفس الربط)
+  const { data: petsRes, isLoading, isError, error, refetch, isFetching } =
+    useGetPetsQuery({ page });
   const pets = useMemo(() => asArray(petsRes), [petsRes]);
   const meta = petsRes?.meta;
 
-  // ✅ types + breeds from API
+  // ✅ types + breeds from API (نفس الربط)
   const { data: typesRes, isLoading: typesLoading } = useGetPetTypesQuery({ page: 1 });
   const { data: breedsRes, isLoading: breedsLoading } = useGetPetBreedsQuery({ page: 1 });
 
   const petTypes = useMemo(() => asArray(typesRes?.data ?? typesRes), [typesRes]);
   const petBreeds = useMemo(() => asArray(breedsRes?.data ?? breedsRes), [breedsRes]);
 
-  // filters
+  // filters (نفس المنطق)
   const [q, setQ] = useState("");
   const [gender, setGender] = useState("all");
   const [age, setAge] = useState("all");
   const [onlyAdoptable, setOnlyAdoptable] = useState(false);
 
-  // ✅ NEW: type/breed filters (ids)
-  const [typeId, setTypeId] = useState("all");   // "all" | number as string
-  const [breedId, setBreedId] = useState("all"); // "all" | number as string
+  // type/breed ids (single-select)
+  const [typeId, setTypeId] = useState("all");
+  const [breedId, setBreedId] = useState("all");
 
-  // breeds filtered by selected type
+  // breeds filtered by selected type (نفسه)
   const availableBreeds = useMemo(() => {
     if (typeId === "all") return petBreeds;
     const n = Number(typeId);
     return petBreeds.filter((b) => Number(b?.pet_type?.id) === n);
   }, [petBreeds, typeId]);
 
-  // reset
-  const resetFilters = () => {
-    setQ("");
-    setGender("all");
-    setAge("all");
-    setOnlyAdoptable(false);
-    setTypeId("all");
-    setBreedId("all");
-  };
-
-  // if type changes and current breed is not in available list -> reset breed
+  // إذا النوع تغيّر والسلالة مو من ضمنهم -> رجّع all (نفسه)
   useEffect(() => {
     if (breedId === "all") return;
     const ok = availableBreeds.some((b) => Number(b.id) === Number(breedId));
     if (!ok) setBreedId("all");
   }, [typeId, availableBreeds, breedId]);
 
-  const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase();
+  const onReset = useCallback(() => {
+    setQ("");
+    setGender("all");
+    setAge("all");
+    setOnlyAdoptable(false);
+    setTypeId("all");
+    setBreedId("all");
+    setPage(1);
+  }, []);
 
-    return pets.filter((p) => {
-      const pGender = (p?.gender || "").toLowerCase();
+  // hook (مثل useProductFilters)
+  const { filtered, getName, getTypeName, getBreedName } = usePetFilters({
+    pets,
+    isAr,
+    query: q,
+    gender,
+    age,
+    onlyAdoptable,
+    typeId,
+    breedId,
+  });
 
-      const okGender = gender === "all" ? true : pGender === gender;
-      const okAge = age === "all" ? true : getAgeGroupFromDob(p?.date_of_birth) === age;
-      const okAdoptable = onlyAdoptable ? p?.is_adoptable === true : true;
+  const currentPage = meta?.current_page ?? page;
+  const lastPage = meta?.last_page ?? page;
+  const canPrev = currentPage > 1;
+  const canNext = currentPage < lastPage;
 
-      const okType = typeId === "all" ? true : Number(p?.pet_type?.id) === Number(typeId);
-      const okBreed = breedId === "all" ? true : Number(p?.pet_breed?.id) === Number(breedId);
-
-      // search only in index-safe fields (no extra)
-      const hay = [p?.name, p?.pet_type?.name, p?.pet_breed?.name].filter(Boolean).join(" ").toLowerCase();
-      const okQ = query ? hay.includes(query) : true;
-
-      return okGender && okAge && okAdoptable && okType && okBreed && okQ;
-    });
-  }, [pets, q, gender, age, onlyAdoptable, typeId, breedId]);
-
-  // states
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FDFCFB] text-[#3D3730]" dir={isAr ? "rtl" : "ltr"}>
-        <Navbar />
-        <main className="pt-28 pb-20">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="h-10 w-64 rounded-2xl bg-black/5 animate-pulse" />
-            <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-[360px] rounded-[32px] bg-black/5 animate-pulse" />
-              ))}
-            </div>
-          </div>
-        </main>
+      <div className="pt-20 text-center animate-pulse text-[#3C7A57] font-medium">
+        {t("Loading adoption...", "جاري تحميل التبنّي...")}
       </div>
     );
   }
@@ -143,25 +114,24 @@ export default function AdoptPage() {
   if (isError) {
     const status = error?.status;
     return (
-      <div className="min-h-screen bg-[#FDFCFB] text-[#3D3730]" dir={isAr ? "rtl" : "ltr"}>
+      <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
         <Navbar />
-        <main className="pt-28 pb-20">
-          <div className="mx-auto max-w-3xl px-6">
-            <div className="rounded-[22px] border border-[#E7DCD0] bg-white p-6">
-              <div className="text-lg font-extrabold">{t("Couldn’t load pets", "ما قدرنا نجيب الحيوانات")}</div>
-              <div className="mt-2 text-sm text-[#2F2A24]/70">
-                {status ? `${t("Status", "الحالة")}: ${status}` : t("Please try again.", "جرّبي مرة تانية.")}
-              </div>
-
-              <div className="mt-5 flex gap-2">
-                <Button
-                  variant="outline"
-                  className="rounded-full border-[#E7DCD0] bg-white hover:bg-[#F5F2F0]"
-                  onClick={refetch}
-                >
-                  {t("Retry", "إعادة المحاولة")}
-                </Button>
-              </div>
+        <main className="mx-auto max-w-7xl px-4 md:px-8 pt-6 pb-20">
+          <div className="rounded-xl border border-[#E7DCD0] bg-white p-6">
+            <div className="text-lg font-semibold text-[#2F2A24]">
+              {t("Couldn’t load pets", "ما قدرنا نجيب الحيوانات")}
+            </div>
+            <div className="mt-2 text-sm text-[#2F2A24]/70">
+              {status ? `${t("Status", "الحالة")}: ${status}` : t("Please try again.", "جرّبي مرة تانية.")}
+            </div>
+            <div className="mt-5 flex gap-2">
+              <Button
+                variant="outline"
+                className="rounded-lg border-[#E7DCD0] bg-white hover:bg-[#FBF7F1]"
+                onClick={refetch}
+              >
+                {t("Retry", "إعادة المحاولة")}
+              </Button>
             </div>
           </div>
         </main>
@@ -169,312 +139,237 @@ export default function AdoptPage() {
     );
   }
 
-  const currentPage = meta?.current_page ?? page;
-  const lastPage = meta?.last_page ?? page;
-  const canPrev = currentPage > 1;
-  const canNext = currentPage < lastPage;
-
   return (
-    <div className="min-h-screen bg-[#FDFCFB] text-[#3D3730]" dir={isAr ? "rtl" : "ltr"}>
+    <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
       <Navbar />
 
-      <main className="pt-28 pb-20">
-        <div className="mx-auto max-w-7xl px-6">
-          {/* Header */}
-          <div className="mb-10 flex items-end justify-between gap-4 flex-wrap">
-            <div>
-              <h1 className="mt-0 text-3xl md:text-4xl font-extrabold tracking-tight text-[#2F2A24]">
-                {t("Adopt your new friend", "تبنّى رفيقك الجديد")}
-              </h1>
-              <p className="mt-2 text-[#2F2A24]/60 font-medium max-w-xl">
-                {t("Give a soul a second chance at happiness.", "امنح كائناً لطيفاً فرصة ثانية ليكون سعيداً.")}
-              </p>
-            </div>
+      <main className="mx-auto max-w-7xl px-4 md:px-8 pt-6 pb-20">
+        {/* ✅ Header مثل Shop */}
+        <header className="mb-8 py-5 px-8 rounded-xl bg-[#F7F3F0] border border-[#E7DCD0]/50 relative flex flex-row items-center justify-between overflow-hidden">
+        <div className="relative z-10 space-y-1">
+<h1 className="text-xl md:text-2xl font-semibold text-[#2F2A24]">
+    {t("Browse pets and adopt ", "تصفّحي الحيوانات وتبنّي")}
+    <span className="text-[#3C7A57]">{t("with confidence", "بكل ثقة")}</span>
+  </h1>
+  <p className="text-[#8C8276] text-[11px] font-medium">
+    {t("A small step for you, a big change for them.", "خطوة صغيرة منك… وتغيير كبير لهم.")}
+  </p>
+</div>
 
-            <div className="flex items-center gap-2 text-sm text-[#2F2A24]/60">
-              <span>
-                {t("Page", "صفحة")} {currentPage} / {lastPage}
-              </span>
-              {isFetching ? <span className="text-xs">{t("Loading…", "جارٍ التحميل…")}</span> : null}
-            </div>
+   <div className="hidden lg:flex items-center gap-10 border-x border-[#E7DCD0]/60 px-12">
+  <div className="text-center">
+    <div className="text-[#3C7A57] font-semibold text-sm">
+      {t("Safe Adoption", "تبنّي آمن")}
+    </div>
+    <div className="text-[9px] text-[#8C8276] uppercase font-semibold tracking-tight">
+      {t("Verified pets & info", "حيوانات ومعلومات موثوقة")}
+    </div>
+  </div>
+
+  <div className="text-center">
+    <div className="text-[#3C7A57] font-semibold text-sm">
+      {t("Find Your Match", "اختاري الأنسب")}
+    </div>
+    <div className="text-[9px] text-[#8C8276] uppercase font-semibold tracking-tight">
+      {t("Type • Breed • Age", "نوع • سلالة • عمر")}
+    </div>
+  </div>
+</div>
+
+          <div className="relative shrink-0">
+            <img
+              src="/pethub-logo (2).png"
+              alt="PetHub"
+              className="h-14 md:h-18 w-auto object-contain"
+            />
           </div>
+        </header>
 
-          <div className="grid gap-10 lg:grid-cols-[280px_1fr]">
-            {/* Sidebar */}
-            <aside className="space-y-6 lg:sticky lg:top-28 h-fit">
-              <div className="flex items-center justify-between px-1">
-                <h2 className="text-[11px] font-extrabold tracking-[0.15em] text-[#2F2A24]/40 uppercase">
-                  {t("Filters", "الفلاتر")}
-                </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* LEFT */}
+          <aside className="lg:sticky lg:top-24 h-fit space-y-6">
+            {/* ✅ Type */}
+            <div className="bg-white border border-[#E7DCD0] rounded-xl p-5 shadow-sm">
+              <h3 className="text-xs font-semibold text-[#2F2A24] uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Filter size={14} className="text-[#3C7A57]" />
+                {t("Pet Type", "نوع الأليف")}
+              </h3>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetFilters}
-                  className="h-7 text-[10px] font-bold text-[#3C7A57] hover:bg-[#3C7A57]/5"
-                >
-                  <RotateCcw className="h-3 w-3 mr-1 ml-1" /> {t("RESET", "إعادة")}
-                </Button>
-              </div>
+              <div className="space-y-3 max-h-[240px] overflow-auto pr-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="type-all"
+                    className="border-[#E7DCD0]"
+                    checked={typeId === "all"}
+                    onCheckedChange={() => setTypeId("all")}
+                  />
+                  <label htmlFor="type-all" className="text-sm font-medium text-[#8C8276] cursor-pointer">
+                    {t("All", "الكل")}
+                  </label>
+                </div>
 
-              {/* Search */}
-              <div className="relative group">
-                <Search
-                  className={`absolute ${isAr ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 h-4 w-4 text-[#2F2A24]/20 group-focus-within:text-[#3C7A57] transition-colors`}
-                />
-                <Input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder={t("Search…", "ابحث…")}
-                  className={`h-12 border-none bg-white shadow-sm rounded-2xl text-sm ${
-                    isAr ? "pr-11" : "pl-11"
-                  } focus-visible:ring-2 focus-visible:ring-[#3C7A57]/10`}
-                />
-              </div>
-
-              <Accordion type="multiple" defaultValue={["type", "breed", "gender", "age"]} className="space-y-3">
-                {/* ✅ Type from API */}
-                <AccordionItem value="type" className="border-none bg-white shadow-sm rounded-2xl px-4">
-                  <AccordionTrigger className="text-[13px] font-extrabold text-[#2F2A24] hover:no-underline py-4 uppercase tracking-wide">
-                    {t("Type", "النوع")}
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-5">
-                    <ToggleGroup
-                      type="single"
-                      value={typeId}
-                      onValueChange={(v) => setTypeId(v || "all")}
-                      className="flex flex-wrap gap-2 justify-start"
-                    >
-                      <ToggleGroupItem
-                        value="all"
-                        className="h-9 px-4 rounded-xl border-none bg-[#F5F2F0] text-[11px] font-bold data-[state=on]:bg-[#3C7A57] data-[state=on]:text-white"
-                      >
-                        {t("All", "الكل")}
-                      </ToggleGroupItem>
-
-                      {(petTypes || []).map((tp) => (
-                        <ToggleGroupItem
-                          key={tp.id}
-                          value={String(tp.id)}
-                          disabled={typesLoading}
-                          className="h-9 px-4 rounded-xl border-none bg-[#F5F2F0] text-[11px] font-bold data-[state=on]:bg-[#3C7A57] data-[state=on]:text-white"
-                        >
-                          {pickName(tp, isAr) || tp.name}
-                        </ToggleGroupItem>
-                      ))}
-                    </ToggleGroup>
-                  </AccordionContent>
-                </AccordionItem>
-
-                {/* ✅ Breed from API (filtered by type) */}
-                <AccordionItem value="breed" className="border-none bg-white shadow-sm rounded-2xl px-4">
-                  <AccordionTrigger className="text-[13px] font-extrabold text-[#2F2A24] hover:no-underline py-4 uppercase tracking-wide">
-                    {t("Breed", "السلالة")}
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-5">
-                    <ToggleGroup
-                      type="single"
-                      value={breedId}
-                      onValueChange={(v) => setBreedId(v || "all")}
-                      className="flex flex-wrap gap-2 justify-start"
-                    >
-                      <ToggleGroupItem
-                        value="all"
-                        className="h-9 px-4 rounded-xl border-none bg-[#F5F2F0] text-[11px] font-bold data-[state=on]:bg-[#3C7A57] data-[state=on]:text-white"
-                      >
-                        {t("All", "الكل")}
-                      </ToggleGroupItem>
-
-                      {(availableBreeds || []).map((br) => (
-                        <ToggleGroupItem
-                          key={br.id}
-                          value={String(br.id)}
-                          disabled={breedsLoading}
-                          className="h-9 px-4 rounded-xl border-none bg-[#F5F2F0] text-[11px] font-bold data-[state=on]:bg-[#3C7A57] data-[state=on]:text-white"
-                        >
-                          {pickName(br, isAr) || br.name}
-                        </ToggleGroupItem>
-                      ))}
-                    </ToggleGroup>
-
-                    {typeId !== "all" && !availableBreeds.length ? (
-                      <div className="mt-3 text-xs text-[#2F2A24]/55">
-                        {t("No breeds for selected type.", "لا يوجد سلالات لهذا النوع.")}
-                      </div>
-                    ) : null}
-                  </AccordionContent>
-                </AccordionItem>
-
-                {/* Gender */}
-                <AccordionItem value="gender" className="border-none bg-white shadow-sm rounded-2xl px-4">
-                  <AccordionTrigger className="text-[13px] font-extrabold text-[#2F2A24] hover:no-underline py-4 uppercase tracking-wide">
-                    {t("Gender", "الجنس")}
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-5">
-                    <ToggleGroup
-                      type="single"
-                      value={gender}
-                      onValueChange={(v) => setGender(v || "all")}
-                      className="flex flex-wrap gap-2 justify-start"
-                    >
-                      {[
-                        { key: "all", en: "All", ar: "الكل" },
-                        { key: "male", en: "Male", ar: "ذكر" },
-                        { key: "female", en: "Female", ar: "أنثى" },
-                      ].map((o) => (
-                        <ToggleGroupItem
-                          key={o.key}
-                          value={o.key}
-                          className="h-9 px-4 rounded-xl border-none bg-[#F5F2F0] text-[11px] font-bold data-[state=on]:bg-[#3C7A57] data-[state=on]:text-white"
-                        >
-                          {t(o.en, o.ar)}
-                        </ToggleGroupItem>
-                      ))}
-                    </ToggleGroup>
-                  </AccordionContent>
-                </AccordionItem>
-
-                {/* Age */}
-                <AccordionItem value="age" className="border-none bg-white shadow-sm rounded-2xl px-4">
-                  <AccordionTrigger className="text-[13px] font-extrabold text-[#2F2A24] hover:no-underline py-4 uppercase tracking-wide">
-                    {t("Age Range", "العمر")}
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-5">
-                    <ToggleGroup
-                      type="single"
-                      value={age}
-                      onValueChange={(v) => setAge(v || "all")}
-                      className="flex flex-wrap gap-2 justify-start"
-                    >
-                      {[
-                        { key: "all", en: "Any", ar: "الكل" },
-                        { key: "baby", en: "Baby", ar: "صغير" },
-                        { key: "young", en: "Young", ar: "يافع" },
-                        { key: "adult", en: "Adult", ar: "بالغ" },
-                      ].map((o) => (
-                        <ToggleGroupItem
-                          key={o.key}
-                          value={o.key}
-                          className="h-9 px-4 rounded-xl border-none bg-[#F5F2F0] text-[11px] font-bold data-[state=on]:bg-[#3C7A57] data-[state=on]:text-white"
-                        >
-                          {t(o.en, o.ar)}
-                        </ToggleGroupItem>
-                      ))}
-                    </ToggleGroup>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-
-              {/* Adoptable */}
-              <div className="flex items-center justify-between p-4 rounded-[20px] bg-white shadow-sm">
-                <span className="text-[11px] font-extrabold text-[#2F2A24] uppercase tracking-wider">
-                  {t("Adoptable only", "القابلين للتبنّي فقط")}
-                </span>
-                <Switch checked={onlyAdoptable} onCheckedChange={setOnlyAdoptable} className="data-[state=checked]:bg-[#3C7A57]" />
-              </div>
-
-              {/* Pagination controls */}
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1 rounded-2xl border-[#E7DCD0] bg-white hover:bg-[#F5F2F0]"
-                  disabled={!canPrev}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className={isAr ? "mr-2" : "ml-2"}>{t("Prev", "السابق")}</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="flex-1 rounded-2xl border-[#E7DCD0] bg-white hover:bg-[#F5F2F0]"
-                  disabled={!canNext}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  <span className={isAr ? "mr-2" : "ml-2"}>{t("Next", "التالي")}</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </aside>
-
-            {/* Grid */}
-            <div className="space-y-6">
-              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                {filtered.map((p) => {
-                  const name = p?.name || `#${p?.id}`;
-                  const typeName = p?.pet_type?.name || "";
-                  const breedName = p?.pet_breed?.name || "";
-                  const cover = p?.cover_image || null;
-
+                {(petTypes || []).map((tp) => {
+                  const id = String(tp?.id);
                   return (
-                    <div
-                      key={p.id}
-                      className="group bg-white rounded-[32px] overflow-hidden border border-[#E7DCD0]/20 hover:shadow-2xl hover:shadow-[#3C7A57]/5 transition-all duration-500"
-                    >
-                      {/* ✅ الصورة من الباك فقط */}
-                      <div className="relative aspect-[1.1/1] m-2.5 overflow-hidden rounded-[24px] bg-[#FBF7F1]">
-                        {cover ? (
-                          <img src={cover} alt={name} className="h-full w-full object-cover" draggable="false" />
-                        ) : (
-                          <div className="h-full w-full grid place-items-center text-[#2F2A24]/40 font-extrabold text-sm">
-                            {t("No image", "لا يوجد صورة")}
-                          </div>
-                        )}
-
-                        <button
-                          type="button"
-                          className={`absolute top-3 ${isAr ? "left-3" : "right-3"} h-9 w-9 flex items-center justify-center rounded-full bg-white/90 backdrop-blur shadow-sm text-[#E84855] active:scale-90 hover:bg-white`}
-                          aria-label="favorite"
-                        >
-                          <Heart className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      {/* ✅ عرض فقط: الاسم + النوع + السلالة */}
-                      <div className="p-5 pt-1">
-                        <h3 className="text-xl font-extrabold text-[#2F2A24] tracking-tight truncate">{name}</h3>
-
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {typeName ? (
-                            <Badge className="bg-[#3C7A57]/10 text-[#3C7A57] border-none font-bold text-[11px] px-3 py-1 rounded-full">
-                              {typeName}
-                            </Badge>
-                          ) : null}
-
-                          {breedName ? (
-                            <Badge className="bg-[#2F2A24]/5 text-[#2F2A24]/70 border-none font-bold text-[11px] px-3 py-1 rounded-full">
-                              {breedName}
-                            </Badge>
-                          ) : null}
-                        </div>
-
-                        <div className="mt-4 flex gap-2">
-                          <Button
-                            asChild
-                            variant="outline"
-                            className="flex-1 rounded-xl border-[#E7DCD0] text-[#2F2A24]/70 text-[11px] font-extrabold h-10 hover:bg-[#F5F2F0]"
-                          >
-                            <Link to={`/pets/${p.id}`} state={{ background: location }}>
-                              {t("DETAILS", "تفاصيل")}
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
+                    <div key={id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`type-${id}`}
+                        className="border-[#E7DCD0]"
+                        disabled={typesLoading}
+                        checked={typeId === id}
+                        onCheckedChange={(v) => setTypeId(v ? id : "all")}
+                      />
+                      <label htmlFor={`type-${id}`} className="text-sm font-medium text-[#8C8276] cursor-pointer">
+                        {pickName(tp, isAr) || tp?.name || `#${id}`}
+                      </label>
                     </div>
                   );
                 })}
               </div>
-
-              {!filtered.length ? (
-                <div className="rounded-[22px] border border-[#E7DCD0] bg-white p-6">
-                  <div className="font-extrabold">{t("No results", "لا يوجد نتائج")}</div>
-                  <div className="mt-1 text-sm text-[#2F2A24]/70">
-                    {t("Try changing filters or page.", "جرّبي تغيّري الفلاتر أو الصفحة.")}
-                  </div>
-                </div>
-              ) : null}
             </div>
-          </div>
+
+            {/* ✅ Breed */}
+            <div className="bg-white border border-[#E7DCD0] rounded-xl p-5 shadow-sm">
+              <h3 className="text-xs font-semibold text-[#2F2A24] uppercase tracking-wider mb-4">
+                {t("Breed", "السلالة")}
+              </h3>
+
+              <div className="space-y-3 max-h-[240px] overflow-auto pr-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="breed-all"
+                    className="border-[#E7DCD0]"
+                    checked={breedId === "all"}
+                    onCheckedChange={() => setBreedId("all")}
+                  />
+                  <label htmlFor="breed-all" className="text-sm font-medium text-[#8C8276] cursor-pointer">
+                    {t("All", "الكل")}
+                  </label>
+                </div>
+
+                {(availableBreeds || []).map((br) => {
+                  const id = String(br?.id);
+                  return (
+                    <div key={id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`breed-${id}`}
+                        className="border-[#E7DCD0]"
+                        disabled={breedsLoading}
+                        checked={breedId === id}
+                        onCheckedChange={(v) => setBreedId(v ? id : "all")}
+                      />
+                      <label htmlFor={`breed-${id}`} className="text-sm font-medium text-[#8C8276] cursor-pointer">
+                        {pickName(br, isAr) || br?.name || `#${id}`}
+                      </label>
+                    </div>
+                  );
+                })}
+
+                {typeId !== "all" && !availableBreeds.length ? (
+                  <div className="text-xs text-[#2F2A24]/55 mt-2">
+                    {t("No breeds for selected type.", "لا يوجد سلالات لهذا النوع.")}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mt-5 flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 rounded-lg border-[#E7DCD0] bg-white hover:bg-[#FBF7F1] flex-1"
+                  onClick={() => {
+                    setTypeId("all");
+                    setBreedId("all");
+                  }}
+                >
+                  {t("Clear", "مسح")}
+                </Button>
+              </div>
+            </div>
+          </aside>
+
+          {/* RIGHT */}
+          <section className="lg:col-span-3 space-y-6">
+            <div className="flex flex-col md:flex-row gap-4 p-3 bg-white border border-[#E7DCD0] rounded-xl shadow-sm items-center">
+              <div className="relative flex-1 w-full">
+                <Search
+                  className={`absolute top-1/2 -translate-y-1/2 h-4 w-4 text-[#A39C94] ${
+                    isAr ? "right-4" : "left-4"
+                  }`}
+                />
+                <Input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder={t("Search pets...", "ابحثي عن الحيوانات...")}
+                  className={`h-10 rounded-lg border-none bg-[#FBF7F1] focus-visible:ring-1 focus-visible:ring-[#3C7A57] ${
+                    isAr ? "pr-10" : "pl-10"
+                  }`}
+                />
+              </div>
+
+          <AdoptFilters
+  gender={gender}
+  setGender={setGender}
+  age={age}
+  setAge={setAge}
+  isAr={isAr}
+  onReset={onReset}
+/>
+            </div>
+
+            {filtered.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {filtered.map((p) => (
+                    <PetCard
+                      key={p.id}
+                      p={p}
+                      isAr={isAr}
+                      name={getName(p) || `#${p?.id}`}
+                      typeName={getTypeName(p)}
+                      breedName={getBreedName(p)}
+                      location={location}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-center gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    className="h-9 rounded-lg border-[#E7DCD0] bg-white hover:bg-[#FBF7F1]"
+                    disabled={!canPrev}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    {t("Prev", "السابق")}
+                  </Button>
+
+                  <div className="text-xs text-[#8C8276] px-2">
+                    {t("Page", "صفحة")} {currentPage} / {lastPage}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    className="h-9 rounded-lg border-[#E7DCD0] bg-white hover:bg-[#FBF7F1]"
+                    disabled={!canNext}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    {t("Next", "التالي")}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="py-20 text-center border border-dashed border-[#E7DCD0] rounded-xl bg-white/50">
+                <PackageSearch className="mx-auto h-10 w-10 text-[#D9D1C9] mb-3" />
+                <Button
+                  variant="link"
+                  onClick={onReset}
+                  className="text-[#3C7A57] font-semibold underline"
+                >
+                  {t("Reset Search", "إعادة ضبط البحث")}
+                </Button>
+              </div>
+            )}
+          </section>
         </div>
       </main>
     </div>

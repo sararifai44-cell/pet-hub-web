@@ -8,6 +8,7 @@ import RegisterPage from "@/pages/RegisterPage";
 
 import AdoptPage from "@/pages/AdoptPage";
 import PetDetailsPage from "@/pages/PetDetailsPage";
+import AdoptionApplicationPage from "@/pages/AdoptionApplicationPage"; // ✅ NEW
 
 import ShopPage from "@/pages/Shop";
 import ShopDetails from "@/pages/ShopDetails";
@@ -25,6 +26,9 @@ const routes = [
       // ✅ list page
       { path: "pets", element: <AdoptPage /> },
 
+      // ✅ NEW: application page
+      { path: "pets/:id/apply", element: <AdoptionApplicationPage /> },
+
       { path: "shop", element: <ShopPage /> },
       { path: "shop/:id", element: <ShopDetails /> },
 
@@ -35,23 +39,17 @@ const routes = [
 
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <RegisterPage /> },
-
-  // ✅ fallback (optional)
-  // { path: "*", element: <NotFoundPage /> },
 ];
 
 export function AppRouter() {
   const location = useLocation();
   const background = location.state?.background;
 
-  // ✅ لو في background: خلي الـ UI الأساسي يضل على صفحة القائمة (AdoptPage)
-  // والمودال لحالو ينرسم فوقه
   const element = useRoutes(routes, background || location);
 
   // ✅ modal routes (فقط لما يكون في background)
   const modal = useRoutes(
     [
-      // مهم: هذا لازم يكون نفس المسار اللي بتحطيه بالـ Link state={{background: location}}
       { path: "/pets/:id", element: <PetDetailsPage /> },
       { path: "*", element: null },
     ],

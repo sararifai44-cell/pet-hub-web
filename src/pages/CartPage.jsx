@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "@/components/common/Navbar";
 
-import { ShoppingBag, Trash2, Plus, Minus, CreditCard } from "lucide-react";
+import { ShoppingBag, Trash2, Plus, Minus, CreditCard, ShoppingCart, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogOverlay, // تم التأكد من استيراد الـ Overlay
 } from "@/components/ui/dialog";
 
 import {
@@ -60,7 +61,7 @@ export default function CartPage() {
     try {
       await updateItem({ itemId: it.id, quantity: Number(it.quantity) + 1 }).unwrap();
     } catch {
-      toast.error(t("Failed to update quantity", "فشل تعديل الكمية"));
+      toast.error(t("Failed", "فشل التعديل"));
     }
   };
 
@@ -73,7 +74,7 @@ export default function CartPage() {
         await updateItem({ itemId: it.id, quantity: q - 1 }).unwrap();
       }
     } catch {
-      toast.error(t("Failed to update quantity", "فشل تعديل الكمية"));
+      toast.error(t("Failed", "فشل التعديل"));
     }
   };
 
@@ -81,7 +82,7 @@ export default function CartPage() {
     try {
       await removeItem({ itemId: it.id, quantity: Number(it.quantity) }).unwrap();
     } catch {
-      toast.error(t("Failed to remove item", "فشل حذف العنصر"));
+      toast.error(t("Failed", "فشل الحذف"));
     }
   };
 
@@ -90,7 +91,7 @@ export default function CartPage() {
       await clearCart().unwrap();
       toast.success(t("Cart cleared", "تم تفريغ السلة"));
     } catch {
-      toast.error(t("Failed to clear cart", "فشل تفريغ السلة"));
+      toast.error(t("Failed", "فشل العملية"));
     }
   };
 
@@ -98,281 +99,107 @@ export default function CartPage() {
     try {
       const res = await createOrder().unwrap();
       const newOrderId = res?.data?.id;
-
-      toast.success(t("Order created!", "تم إنشاء الطلب!"), {
-        description: newOrderId ? `#${newOrderId}` : undefined,
-        duration: 2500,
-      });
-
+      toast.success(t("Order created!", "تم إنشاء الطلب!"));
       setConfirmOpen(false);
       navigate("/orders", { state: { highlightId: newOrderId } });
     } catch (e) {
-      const status = e?.status;
-      toast.error(
-        status === 401
-          ? t("Please login first", "لازم تسجّل دخول أولاً")
-          : t("Failed to create order", "فشل إنشاء الطلب")
-      );
+      toast.error(t("Failed to create order", "فشل إنشاء الطلب"));
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#FBF7F1] text-[#2F2A24]" dir={isAr ? "rtl" : "ltr"}>
-        <Navbar />
-        <main className="pt-24">
-          <div className="mx-auto max-w-6xl px-4 md:px-6">
-            <div className="h-10 w-56 rounded-lg bg-black/5 animate-pulse" />
-            <div className="mt-6 h-40 rounded-xl bg-black/5 animate-pulse" />
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (isError) {
-    const status = error?.status;
-    return (
-      <div className="min-h-screen bg-[#FBF7F1] text-[#2F2A24]" dir={isAr ? "rtl" : "ltr"}>
-        <Navbar />
-        <main className="pt-24">
-          <div className="mx-auto max-w-4xl px-4 md:px-6">
-            <Card className="rounded-xl border-[#E7DCD0]/70 bg-white/70">
-              <CardHeader>
-                <CardTitle>{t("Couldn’t load cart", "ما قدرنا نجيب السلة")}</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {status === 401 ? (
-                  <Button asChild className="rounded-full bg-[#3C7A57] hover:bg-[#336A4C] text-white">
-                    <Link to="/login">{t("Login", "تسجيل الدخول")}</Link>
-                  </Button>
-                ) : null}
-
-                <Button
-                  variant="outline"
-                  onClick={refetch}
-                  className="rounded-full border-[#E7DCD0] bg-white/70 hover:bg-white"
-                >
-                  {t("Retry", "إعادة المحاولة")}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="min-h-screen bg-[#FDFCFB]" />;
 
   return (
-    <div className="min-h-screen bg-[#FBF7F1] text-[#2F2A24]" dir={isAr ? "rtl" : "ltr"}>
+    <div className="min-h-screen bg-[#FDFCFB] text-[#2F2A24]" dir={isAr ? "rtl" : "ltr"}>
       <Navbar />
 
-      <main className="pt-24 pb-20">
-        <div className="mx-auto max-w-6xl px-4 md:px-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h1 className="mt-0 text-3xl md:text-4xl font-extrabold tracking-tight text-[#2F2A24]">
-              {t("Shopping Cart", "سلة التسوق")}
-            </h1>
-
+      <main className="pt-28 pb-20 px-4 md:px-6">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-8 flex items-center justify-between">
+            <h1 className="text-3xl font-bold tracking-tight">{t("Shopping Cart", "سلة التسوق")}</h1>
             {!!items.length && (
-              <Button
-                variant="outline"
-                onClick={onClear}
-                disabled={clearing}
-                className="rounded-full border-[#E7DCD0] bg-white/70 hover:bg-white"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className={isAr ? "mr-2" : "ml-2"}>{t("Clear", "تفريغ")}</span>
+              <Button variant="ghost" onClick={onClear} className="text-red-500 font-medium hover:bg-red-50 rounded-xl">
+                <Trash2 className="h-4 w-4 mr-2" /> {t("Clear", "تفريغ")}
               </Button>
             )}
           </div>
 
-          <Separator className="my-6 bg-[#E7DCD0]" />
-
           {!items.length ? (
-            <Card className="rounded-xl border-[#E7DCD0]/70 bg-white/70 backdrop-blur-md">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-12 w-12 place-items-center rounded-lg bg-[#3C7A57]/10 border border-[#3C7A57]/20">
-                    <ShoppingBag className="h-6 w-6 text-[#3C7A57]" />
-                  </span>
-                  <div>
-                    <CardTitle className="text-xl">{t("Your cart is empty", "السلة فارغة")}</CardTitle>
-                    <div className="text-sm text-[#2F2A24]/70 mt-1">
-                      {t("Go back to the shop and add something.", "ارجع للمتجر وأضف منتجات.")}
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="pt-4">
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button asChild className="h-11 rounded-full bg-[#3C7A57] text-white hover:bg-[#336A4C]">
-                    <Link to="/shop">{t("Go to shop", "اذهب للتسوق")}</Link>
-                  </Button>
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="h-11 rounded-full border-[#E7DCD0] bg-white/70 hover:bg-white"
-                  >
-                    <Link to="/">{t("Back home", "الصفحة الرئيسية")}</Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="py-20 text-center border-2 border-dashed border-slate-100 rounded-[32px]">
+              <ShoppingBag className="mx-auto h-12 w-12 text-slate-200 mb-4" />
+              <p className="text-slate-500 font-medium">{t("Your cart is empty", "سلتك فارغة حالياً")}</p>
+              <Button asChild className="mt-6 rounded-xl bg-[#3C7A57] px-8 text-white">
+                <Link to="/shop">{t("Shop Now", "تسوق الآن")}</Link>
+              </Button>
+            </div>
           ) : (
-            <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-              {/* items */}
-              <div className="space-y-3">
-                {items.map((it) => {
-                  const p = it.product || {};
-                  const name = p.name || `#${it.product_id}`;
-                  const price = Number(p.price ?? 0);
-                  const qty = Number(it.quantity ?? 0);
-                  const lineTotal = Number(it.line_total ?? price * qty);
-
-                  return (
-                    <Card key={it.id} className="rounded-xl border-[#E7DCD0]/70 bg-white/75">
-                      <CardContent className="p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <div className="text-lg font-extrabold truncate uppercase tracking-tight">{name}</div>
-                            {p.description ? (
-                              <div className="mt-1 text-xs text-[#2F2A24]/60 line-clamp-1">{p.description}</div>
-                            ) : null}
-                            <div className="mt-2 text-sm font-bold text-[#3C7A57]">
-                              {money(price)} <span className="text-[#2F2A24]/30 font-normal mx-1">/</span>{" "}
-                              <span className="text-[#2F2A24]/70 text-xs">{t("unit", "قطعة")}</span>
-                            </div>
-                          </div>
-
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => onRemoveAll(it)}
-                            disabled={removing}
-                            className="h-9 w-9 rounded-full border-[#E7DCD0] bg-white/70 hover:bg-red-50 hover:text-red-600 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+            <div className="grid gap-10 lg:grid-cols-[1fr_350px]">
+              <div className="space-y-4">
+                {items.map((it) => (
+                  <div key={it.id} className="flex gap-4 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg leading-tight uppercase">{it.product?.name}</h3>
+                      <p className="text-[#3C7A57] font-semibold text-sm mt-1">{money(it.product?.price)}</p>
+                      
+                      <div className="mt-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-xl">
+                          <button onClick={() => onMinus(it)} className="h-7 w-7 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-slate-50 transition-colors"><Minus className="h-3 w-3"/></button>
+                          <span className="text-sm font-bold w-4 text-center">{it.quantity}</span>
+                          <button onClick={() => onPlus(it)} className="h-7 w-7 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-slate-50 transition-colors"><Plus className="h-3 w-3"/></button>
                         </div>
-
-                        <div className="mt-4 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 rounded-lg border border-[#E7DCD0] bg-white px-2 py-1 shadow-sm">
-                            <button
-                              type="button"
-                              onClick={() => onMinus(it)}
-                              disabled={updating || removing}
-                              className="h-7 w-7 grid place-items-center rounded-md hover:bg-black/5 transition-colors disabled:opacity-30"
-                              aria-label="minus"
-                            >
-                              <Minus className="h-3.5 w-3.5" />
-                            </button>
-
-                            <div className="min-w-[24px] text-center font-extrabold text-sm">{qty}</div>
-
-                            <button
-                              type="button"
-                              onClick={() => onPlus(it)}
-                              disabled={updating}
-                              className="h-7 w-7 grid place-items-center rounded-md hover:bg-black/5 transition-colors disabled:opacity-30"
-                              aria-label="plus"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-
-                          <div className="text-right">
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("Line total", "مجموع العنصر")}</div>
-                            <div className="text-lg font-bold text-[#2F2A24]">{money(lineTotal)}</div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                        <p className="font-bold text-slate-700">{money(it.line_total)}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => onRemoveAll(it)} className="text-slate-300 hover:text-red-500 transition-colors p-1"><Trash2 className="h-4 w-4"/></button>
+                  </div>
+                ))}
               </div>
 
-              {/* summary */}
-              <Card className="rounded-xl border-[#E7DCD0]/70 bg-white/75 h-fit lg:sticky lg:top-28">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{t("Order summary", "ملخص الطلب")}</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#2F2A24]/70">{t("Items", "العناصر")}</span>
-                    <span className="font-bold">{items.length}</span>
-                  </div>
-
-                  <Separator className="my-4 bg-[#E7DCD0]/60" />
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-[#2F2A24]/70 font-semibold">{t("Total", "الإجمالي")}</span>
-                    <span className="text-xl font-bold text-[#3C7A57]">{money(total)}</span>
-                  </div>
-
-                  <Button
-                    onClick={() => setConfirmOpen(true)}
-                    className="mt-5 w-full h-11 rounded-full bg-[#3C7A57] hover:bg-[#336A4C] text-white shadow-sm"
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    <span className={isAr ? "mr-2" : "ml-2"}>{t("Order now", "اطلب الآن")}</span>
-                  </Button>
-
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="mt-2 w-full h-11 rounded-full border-[#E7DCD0] bg-white/70 hover:bg-white"
-                  >
-                    <Link to="/shop">{t("Continue shopping", "متابعة التسوق")}</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <div className="bg-white border border-slate-100 p-6 rounded-[24px] shadow-sm h-fit">
+                <h2 className="font-bold text-lg mb-4">{t("Summary", "الملخص")}</h2>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between text-slate-500"><span>{t("Subtotal", "المجموع")}</span><span className="font-bold text-slate-800">{money(total)}</span></div>
+                  <div className="flex justify-between text-slate-500"><span>{t("Shipping", "الشحن")}</span><span className="text-[#3C7A57] font-bold">{t("Free", "مجاني")}</span></div>
+                  <Separator className="my-2" />
+                  <div className="flex justify-between text-lg font-bold"><span>{t("Total", "الإجمالي")}</span><span className="text-[#3C7A57]">{money(total)}</span></div>
+                </div>
+                <Button onClick={() => setConfirmOpen(true)} className="w-full mt-6 h-12 rounded-xl bg-[#3C7A57] hover:bg-[#336A4C] font-bold text-white shadow-lg shadow-[#3C7A57]/20 transition-all active:scale-95">
+                  {t("Checkout", "إتمام الطلب")}
+                </Button>
+              </div>
             </div>
           )}
         </div>
       </main>
 
+      {/* الدايلوغ المصحح لعدم الشفافية */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="rounded-xl max-w-[90vw] sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("Confirm order", "تأكيد الطلب")}</DialogTitle>
-            <DialogDescription className="text-xs">
-              {t(
-                "We’ll create an order from your cart and then clear the cart.",
-                "رح ننشئ طلب من السلة وبعدها رح تنفضى السلة."
-              )}
+        <DialogContent className="z-[200] rounded-[24px] max-w-sm p-0 overflow-hidden border-none shadow-2xl bg-white focus:outline-none">
+          <div className="p-6 text-center bg-white">
+            <div className="mx-auto h-12 w-12 rounded-full bg-[#3C7A57]/10 flex items-center justify-center mb-4">
+              <CheckCircle2 className="h-6 w-6 text-[#3C7A57]" />
+            </div>
+            <DialogTitle className="text-xl font-bold mb-2 text-[#2F2A24]">{t("Confirm Order", "تأكيد الطلب")}</DialogTitle>
+            <DialogDescription className="text-slate-500 text-sm">
+              {t("Are you sure you want to place this order? Your cart will be cleared.", "هل أنت متأكد من إتمام الطلب؟ سيتم تفريغ السلة تلقائياً.")}
             </DialogDescription>
-          </DialogHeader>
-
-          <div className="rounded-lg border border-[#E7DCD0] bg-[#FBF7F1] p-4 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-[#2F2A24]/70">{t("Items", "العناصر")}</span>
-              <span className="font-bold">{items.length}</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-[#2F2A24]/70">{t("Total", "الإجمالي")}</span>
-              <span className="font-bold text-[#3C7A57]">{money(total)}</span>
-            </div>
           </div>
 
-          <DialogFooter className={`flex flex-col-reverse sm:flex-row gap-2 ${isAr ? "sm:justify-start" : "sm:justify-end"}`}>
-            <Button
-              variant="outline"
-              onClick={() => setConfirmOpen(false)}
-              className="rounded-full border-[#E7DCD0] bg-white/70 hover:bg-white flex-1 sm:flex-none"
-            >
-              {t("Cancel", "إلغاء")}
-            </Button>
-
-            <Button
-              onClick={onConfirmOrder}
-              disabled={ordering}
-              className="rounded-full bg-[#3C7A57] hover:bg-[#336A4C] text-white flex-1 sm:flex-none"
-            >
-              {t("Confirm", "تأكيد")}
-            </Button>
-          </DialogFooter>
+          <div className="px-6 pb-6 space-y-3 bg-white">
+             <div className="flex justify-between p-3 bg-slate-50 rounded-xl text-sm font-semibold border border-slate-100">
+                <span className="text-slate-500">{t("Amount to pay", "المبلغ المطلوب")}</span>
+                <span className="text-[#3C7A57] font-bold">{money(total)}</span>
+             </div>
+             
+             <div className="flex flex-col gap-2 pt-2">
+                <Button onClick={onConfirmOrder} disabled={ordering} className="h-12 rounded-xl bg-[#3C7A57] hover:bg-[#336A4C] text-white font-bold transition-all active:scale-95">
+                  {ordering ? t("Processing...", "جاري الطلب...") : t("Confirm Order", "تأكيد الطلب")}
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirmOpen(false)} className="text-slate-400 font-medium h-10 hover:bg-slate-50 rounded-xl">
+                  {t("Cancel", "إلغاء")}
+                </Button>
+             </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

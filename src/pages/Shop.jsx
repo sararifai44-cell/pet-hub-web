@@ -13,6 +13,10 @@ import { useAddItemToCartMutation } from "@/features/cart/cartApiSlice";
 import { useGetProductsQuery } from "@/features/Products/productsApiSlice";
 import { useProductFilters } from "@/features/Products/hooks/useProductFilters";
 
+// ✅ API for filters (مثل pets)
+import { useGetPetTypesQuery } from "@/features/petTypes/petTypesApiSlice";
+import { useGetProductCategoriesQuery } from "@/features/productCategories/productCategoriesApiSlice";
+
 const uniq = (arr) => Array.from(new Set(arr));
 const sameArray = (a = [], b = []) => {
   const A = uniq(a).slice().sort().join("|");
@@ -32,23 +36,37 @@ export default function ShopPage() {
   const [availability, setAvailability] = useState("all");
   const [sort, setSort] = useState("newest");
 
-  // ✅ Draft (يتغير مع التشيك بوكس بس ما يفلتر مباشرة)
-  const [animalsDraft, setAnimalsDraft] = useState([]);
-  const [categoriesDraft, setCategoriesDraft] = useState([]);
+  // ✅ Draft
+  const [animalsDraft, setAnimalsDraft] = useState([]);     // type IDs as strings
+  const [categoriesDraft, setCategoriesDraft] = useState([]); // category IDs as strings
 
-  // ✅ Applied (هو اللي يفلتر فعلياً بعد Apply)
+  // ✅ Applied
   const [animalsApplied, setAnimalsApplied] = useState([]);
   const [categoriesApplied, setCategoriesApplied] = useState([]);
 
   const { data: productsRes, isLoading } = useGetProductsQuery({ page });
   const [addItemToCart, { isLoading: adding }] = useAddItemToCartMutation();
 
+  // ✅ filter data from API
+  const { data: typesRes } = useGetPetTypesQuery({ page: 1 });
+  const { data: catRes } = useGetProductCategoriesQuery({ page: 1 });
+
+  const petTypes = useMemo(
+    () => (Array.isArray(typesRes?.data) ? typesRes.data : Array.isArray(typesRes) ? typesRes : []),
+    [typesRes]
+  );
+
+  const productCategories = useMemo(
+    () => (Array.isArray(catRes?.data) ? catRes.data : Array.isArray(catRes) ? catRes : []),
+    [catRes]
+  );
+
   const products = useMemo(
     () => (Array.isArray(productsRes?.data) ? productsRes.data : []),
     [productsRes]
   );
 
-  // ✅ فلترة عامة (بحث + توفر + ترتيب) من hook
+  // ✅ فلترة عامة (بحث + توفر + ترتيب)
   const { filtered: baseFiltered, getName } = useProductFilters({
     products,
     isAr,
@@ -57,74 +75,18 @@ export default function ShopPage() {
     sort,
   });
 
-  // ✅ فلترة اليسار (Types + Categories) - من React فقط + Apply
+  // ✅ فلترة اليسار بالـIDs (type + category)
   const filtered = useMemo(() => {
-    const textOf = (p) => {
-      const name = (isAr ? p?.name_ar : p?.name_en) || p?.name || "";
-      const desc = p?.description || "";
-      return `${name} ${desc}`.toLowerCase();
-    };
-
-    const petTypeOf = (p) =>
-      (p?.pet_type?.key ||
-        p?.petType ||
-        p?.pet_type ||
-        p?.animal_type ||
-        "")
-        .toString()
-        .toLowerCase();
-
-    const categoryOf = (p) =>
-      (p?.category?.key || p?.category || p?.product_category || "")
-        .toString()
-        .toLowerCase();
-
-    const animalKeywords = {
-      cat: ["cat", "kitten", "قط", "قطط"],
-      dog: ["dog", "puppy", "كلب", "كلاب"],
-      bird: ["bird", "parrot", "طير", "طيور"],
-    };
-
-    const categoryKeywords = {
-      food: ["food", "feed", "طعام", "اكل", "أكل"],
-      toys: ["toy", "toys", "لعبة", "ألعاب", "لعب"],
-      grooming: ["groom", "grooming", "care", "عناية", "تنظيف"],
-    };
-
-    const matchAny = (haystack, words = []) =>
-      words.some((w) => haystack.includes(w));
-
     return baseFiltered.filter((p) => {
-      const txt = textOf(p);
+      const typeId = p?.pet_type?.id != null ? String(p.pet_type.id) : null;
+      const catId = p?.category?.id != null ? String(p.category.id) : null;
 
-      // ✅ Types
-      const okAnimal = (() => {
-        if (!animalsApplied.length) return true;
+      const okType = !animalsApplied.length || (typeId && animalsApplied.includes(typeId));
+      const okCategory = !categoriesApplied.length || (catId && categoriesApplied.includes(catId));
 
-        const pt = petTypeOf(p);
-        if (pt) return animalsApplied.includes(pt);
-
-        return animalsApplied.some((a) =>
-          matchAny(txt, animalKeywords[a] || [])
-        );
-      })();
-      if (!okAnimal) return false;
-
-      // ✅ Categories
-      const okCategory = (() => {
-        if (!categoriesApplied.length) return true;
-
-        const cat = categoryOf(p);
-        if (cat) return categoriesApplied.includes(cat);
-
-        return categoriesApplied.some((c) =>
-          matchAny(txt, categoryKeywords[c] || [])
-        );
-      })();
-
-      return okCategory;
+      return okType && okCategory;
     });
-  }, [baseFiltered, animalsApplied, categoriesApplied, isAr]);
+  }, [baseFiltered, animalsApplied, categoriesApplied]);
 
   const toggle = (arr, id) =>
     arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id];
@@ -136,13 +98,11 @@ export default function ShopPage() {
     );
   }, [animalsDraft, animalsApplied, categoriesDraft, categoriesApplied]);
 
-  // ✅ APPLY: بدون توستر — بس طبّق الفلاتر
   const applyLeftFilters = useCallback(() => {
     setAnimalsApplied(animalsDraft);
     setCategoriesApplied(categoriesDraft);
   }, [animalsDraft, categoriesDraft]);
 
-  // ✅ CLEAR: بدون توستر — بس صفّر
   const clearLeftFilters = useCallback(() => {
     setAnimalsDraft([]);
     setCategoriesDraft([]);
@@ -150,7 +110,6 @@ export default function ShopPage() {
     setCategoriesApplied([]);
   }, []);
 
-  // ✅ التوستر بيضل بس للـ Add to cart
   const handleAdd = useCallback(
     async (p) => {
       try {
@@ -196,7 +155,7 @@ export default function ShopPage() {
       <Navbar />
 
       <main className="mx-auto max-w-7xl px-4 md:px-8 pt-6 pb-20">
-        {/* ✅ الهيدر: لا تغيير */}
+        {/* Header (نفسه) */}
         <header className="mb-8 py-5 px-8 rounded-xl bg-[#F7F3F0] border border-[#E7DCD0]/50 relative flex flex-row items-center justify-between overflow-hidden">
           <div className="relative z-10 space-y-1">
             <h1 className="text-xl md:text-2xl font-semibold text-[#2F2A24]">
@@ -239,7 +198,7 @@ export default function ShopPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* LEFT */}
           <aside className="lg:sticky lg:top-24 h-fit space-y-6">
-            {/* ✅ Types */}
+            {/* Types (من API) */}
             <div className="bg-white border border-[#E7DCD0] rounded-xl p-5 shadow-sm">
               <h3 className="text-xs font-semibold text-[#2F2A24] uppercase tracking-wider mb-4 flex items-center gap-2">
                 <Filter size={14} className="text-[#3C7A57]" />
@@ -247,57 +206,49 @@ export default function ShopPage() {
               </h3>
 
               <div className="space-y-3">
-                {[
-                  { id: "dog", label: isAr ? "كلاب" : "Dogs" },
-                  { id: "cat", label: isAr ? "قطط" : "Cats" },
-                  { id: "bird", label: isAr ? "طيور" : "Birds" },
-                ].map((item) => (
+                {petTypes.map((item) => (
                   <div key={item.id} className="flex items-center gap-2">
                     <Checkbox
                       id={`a-${item.id}`}
                       className="border-[#E7DCD0]"
-                      checked={animalsDraft.includes(item.id)}
+                      checked={animalsDraft.includes(String(item.id))}
                       onCheckedChange={() =>
-                        setAnimalsDraft((prev) => toggle(prev, item.id))
+                        setAnimalsDraft((prev) => toggle(prev, String(item.id)))
                       }
                     />
                     <label
                       htmlFor={`a-${item.id}`}
                       className="text-sm font-medium text-[#8C8276] cursor-pointer"
                     >
-                      {item.label}
+                      {isAr ? item.name_ar ?? item.name_en : item.name_en ?? item.name_ar}
                     </label>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* ✅ Categories + Apply */}
+            {/* Categories (من API) */}
             <div className="bg-white border border-[#E7DCD0] rounded-xl p-5 shadow-sm">
               <h3 className="text-xs font-semibold text-[#2F2A24] uppercase tracking-wider mb-4">
                 {isAr ? "التصنيفات" : "Categories"}
               </h3>
 
               <div className="space-y-3">
-                {[
-                  { id: "food", label: isAr ? "الأغذية" : "Food" },
-                  { id: "toys", label: isAr ? "الألعاب" : "Toys" },
-                  { id: "grooming", label: isAr ? "العناية" : "Grooming" },
-                ].map((item) => (
+                {productCategories.map((item) => (
                   <div key={item.id} className="flex items-center gap-2">
                     <Checkbox
                       id={`c-${item.id}`}
                       className="border-[#E7DCD0]"
-                      checked={categoriesDraft.includes(item.id)}
+                      checked={categoriesDraft.includes(String(item.id))}
                       onCheckedChange={() =>
-                        setCategoriesDraft((prev) => toggle(prev, item.id))
+                        setCategoriesDraft((prev) => toggle(prev, String(item.id)))
                       }
                     />
                     <label
                       htmlFor={`c-${item.id}`}
                       className="text-sm font-medium text-[#8C8276] cursor-pointer"
                     >
-                      {item.label}
+                      {isAr ? item.name_ar ?? item.name_en : item.name_en ?? item.name_ar}
                     </label>
                   </div>
                 ))}
@@ -337,9 +288,7 @@ export default function ShopPage() {
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={
-                    isAr ? "ابحثي عن مستلزمات..." : "Search for supplies..."
-                  }
+                  placeholder={isAr ? "ابحثي عن مستلزمات..." : "Search for supplies..."}
                   className={`h-10 rounded-lg border-none bg-[#FBF7F1] focus-visible:ring-1 focus-visible:ring-[#3C7A57] ${
                     isAr ? "pr-10" : "pl-10"
                   }`}

@@ -9,14 +9,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 
-export default function ShopFilters({
-  availability,
-  setAvailability,
-  sort,
-  setSort,
-  isAr,
-  onReset,
-}) {
+export default function ShopFilters({ sort, setSort, isAr, onReset }) {
   const t = (en, ar) => (isAr ? ar : en);
 
   const triggerClass =
@@ -36,23 +29,7 @@ export default function ShopFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Select value={availability} onValueChange={setAvailability}>
-        <SelectTrigger className={triggerClass}>
-          <SelectValue placeholder={t("Availability", "التوفر")} />
-        </SelectTrigger>
-
-        <SelectContent className={contentClass}>
-          <SelectItem value="all" className={itemClass}>
-            {t("All", "الكل")}
-          </SelectItem>
-          <SelectItem value="in_stock" className={itemClass}>
-            {t("In Stock", "متوفر")}
-          </SelectItem>
-          <SelectItem value="out_of_stock" className={itemClass}>
-            {t("Out of Stock", "غير متوفر")}
-          </SelectItem>
-        </SelectContent>
-      </Select>
+      {/* ✅ Availability / Stock filter removed */}
 
       <Select value={sort} onValueChange={setSort}>
         <SelectTrigger className={triggerClass}>

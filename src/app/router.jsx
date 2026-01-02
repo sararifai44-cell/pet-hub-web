@@ -8,13 +8,20 @@ import RegisterPage from "@/pages/RegisterPage";
 
 import AdoptPage from "@/pages/AdoptPage";
 import PetDetailsPage from "@/pages/PetDetailsPage";
-import AdoptionApplicationPage from "@/pages/AdoptionApplicationPage"; // ✅ NEW
+import AdoptionApplicationPage from "@/pages/AdoptionApplicationPage";
 
 import ShopPage from "@/pages/Shop";
 import ShopDetails from "@/pages/ShopDetails";
 
 import CartPage from "@/pages/CartPage";
 import OrdersPage from "@/pages/OrdersPage";
+
+import MyAdoptionRequestsPage from "@/pages/MyAdoptionRequestsPage";
+import AdoptionRequestDetailsPage from "@/pages/AdoptionRequestDetailsPage";
+
+import BoardingPage from "@/pages/BoardingPage";
+import MyBoardingReservationsPage from "@/pages/MyBoardingReservationsPage";
+import BoardingReservationDetailsPage from "@/pages/BoardingReservationDetailsPage";
 
 const routes = [
   {
@@ -23,10 +30,7 @@ const routes = [
     children: [
       { index: true, element: <HomePage /> },
 
-      // ✅ list page
       { path: "pets", element: <AdoptPage /> },
-
-      // ✅ NEW: application page
       { path: "pets/:id/apply", element: <AdoptionApplicationPage /> },
 
       { path: "shop", element: <ShopPage /> },
@@ -34,6 +38,13 @@ const routes = [
 
       { path: "cart", element: <CartPage /> },
       { path: "orders", element: <OrdersPage /> },
+
+      { path: "adoption-requests", element: <MyAdoptionRequestsPage /> },
+      { path: "adoption-requests/:id", element: <AdoptionRequestDetailsPage /> },
+
+      { path: "boarding", element: <BoardingPage /> },
+      { path: "my-boarding-reservations", element: <MyBoardingReservationsPage /> },
+      { path: "my-boarding-reservations/:id", element: <BoardingReservationDetailsPage /> },
     ],
   },
 
@@ -47,7 +58,6 @@ export function AppRouter() {
 
   const element = useRoutes(routes, background || location);
 
-  // ✅ modal routes (فقط لما يكون في background)
   const modal = useRoutes(
     [
       { path: "/pets/:id", element: <PetDetailsPage /> },

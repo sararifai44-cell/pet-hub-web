@@ -15,13 +15,29 @@ export const adoptionApplicationsApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: [{ type: "AdoptionApplication", id: "LIST" }],
     }),
 
-    // (اختياري لاحقاً) GET /api/my/adoption-applications
+    // ✅ GET /api/my/adoption-applications?page=1
     getMyAdoptionApplications: builder.query({
       query: ({ page = 1 } = {}) => ({
         url: `my/adoption-applications?page=${page}`,
         method: "GET",
       }),
-      providesTags: [{ type: "AdoptionApplication", id: "LIST" }],
+      providesTags: (result) => {
+        const arr = result?.data || [];
+        return [
+          { type: "AdoptionApplication", id: "LIST" },
+          ...arr.map((x) => ({ type: "AdoptionApplication", id: x.id })),
+        ];
+      },
+    }),
+
+    // ✅ GET /api/my/adoption-applications/:id  (show/details)
+    getMyAdoptionApplicationById: builder.query({
+      query: (id) => ({
+        url: `my/adoption-applications/${id}`,
+        method: "GET",
+      }),
+      transformResponse: (res) => pickSingle(res),
+      providesTags: (_res, _err, id) => [{ type: "AdoptionApplication", id }],
     }),
   }),
   overrideExisting: false,
@@ -30,4 +46,5 @@ export const adoptionApplicationsApiSlice = apiSlice.injectEndpoints({
 export const {
   useCreateAdoptionApplicationMutation,
   useGetMyAdoptionApplicationsQuery,
+  useGetMyAdoptionApplicationByIdQuery, // ✅ NEW
 } = adoptionApplicationsApiSlice;

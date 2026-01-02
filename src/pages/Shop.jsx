@@ -33,11 +33,10 @@ export default function ShopPage() {
 
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
-  const [availability, setAvailability] = useState("all");
   const [sort, setSort] = useState("newest");
 
   // ✅ Draft
-  const [animalsDraft, setAnimalsDraft] = useState([]);     // type IDs as strings
+  const [animalsDraft, setAnimalsDraft] = useState([]); // type IDs as strings
   const [categoriesDraft, setCategoriesDraft] = useState([]); // category IDs as strings
 
   // ✅ Applied
@@ -52,12 +51,22 @@ export default function ShopPage() {
   const { data: catRes } = useGetProductCategoriesQuery({ page: 1 });
 
   const petTypes = useMemo(
-    () => (Array.isArray(typesRes?.data) ? typesRes.data : Array.isArray(typesRes) ? typesRes : []),
+    () =>
+      Array.isArray(typesRes?.data)
+        ? typesRes.data
+        : Array.isArray(typesRes)
+        ? typesRes
+        : [],
     [typesRes]
   );
 
   const productCategories = useMemo(
-    () => (Array.isArray(catRes?.data) ? catRes.data : Array.isArray(catRes) ? catRes : []),
+    () =>
+      Array.isArray(catRes?.data)
+        ? catRes.data
+        : Array.isArray(catRes)
+        ? catRes
+        : [],
     [catRes]
   );
 
@@ -66,12 +75,11 @@ export default function ShopPage() {
     [productsRes]
   );
 
-  // ✅ فلترة عامة (بحث + توفر + ترتيب)
+  // ✅ فلترة عامة (بحث + ترتيب فقط)
   const { filtered: baseFiltered, getName } = useProductFilters({
     products,
     isAr,
     query,
-    availability,
     sort,
   });
 
@@ -81,8 +89,11 @@ export default function ShopPage() {
       const typeId = p?.pet_type?.id != null ? String(p.pet_type.id) : null;
       const catId = p?.category?.id != null ? String(p.category.id) : null;
 
-      const okType = !animalsApplied.length || (typeId && animalsApplied.includes(typeId));
-      const okCategory = !categoriesApplied.length || (catId && categoriesApplied.includes(catId));
+      const okType =
+        !animalsApplied.length || (typeId && animalsApplied.includes(typeId));
+      const okCategory =
+        !categoriesApplied.length ||
+        (catId && categoriesApplied.includes(catId));
 
       return okType && okCategory;
     });
@@ -137,7 +148,6 @@ export default function ShopPage() {
 
   const onReset = useCallback(() => {
     setQuery("");
-    setAvailability("all");
     setSort("newest");
     clearLeftFilters();
   }, [clearLeftFilters]);
@@ -220,7 +230,9 @@ export default function ShopPage() {
                       htmlFor={`a-${item.id}`}
                       className="text-sm font-medium text-[#8C8276] cursor-pointer"
                     >
-                      {isAr ? item.name_ar ?? item.name_en : item.name_en ?? item.name_ar}
+                      {isAr
+                        ? item.name_ar ?? item.name_en
+                        : item.name_en ?? item.name_ar}
                     </label>
                   </div>
                 ))}
@@ -241,14 +253,18 @@ export default function ShopPage() {
                       className="border-[#E7DCD0]"
                       checked={categoriesDraft.includes(String(item.id))}
                       onCheckedChange={() =>
-                        setCategoriesDraft((prev) => toggle(prev, String(item.id)))
+                        setCategoriesDraft((prev) =>
+                          toggle(prev, String(item.id))
+                        )
                       }
                     />
                     <label
                       htmlFor={`c-${item.id}`}
                       className="text-sm font-medium text-[#8C8276] cursor-pointer"
                     >
-                      {isAr ? item.name_ar ?? item.name_en : item.name_en ?? item.name_ar}
+                      {isAr
+                        ? item.name_ar ?? item.name_en
+                        : item.name_en ?? item.name_ar}
                     </label>
                   </div>
                 ))}
@@ -296,8 +312,6 @@ export default function ShopPage() {
               </div>
 
               <ShopFilters
-                availability={availability}
-                setAvailability={setAvailability}
                 sort={sort}
                 setSort={setSort}
                 isAr={isAr}

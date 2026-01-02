@@ -8,26 +8,23 @@ const API_URL = RAW_API_URL.replace(/\/+$/, "") + "/";
 
 const COOKIE_TOKEN_KEYS = ["token", "access_token"];
 
-// ✅ Cookie-only
 export const getToken = () => {
   const token = Cookies.get("token") || Cookies.get("access_token");
   if (!token || token === "undefined" || token === "null") return null;
   return token;
 };
 
-// ✅ Cookie-only
 export const setToken = (token) => {
   if (!token) return;
 
   Cookies.set("token", token, {
-    expires: 7, // أيام
+    expires: 7,
     sameSite: "lax",
-    secure: false, // خليها true بالإنتاج على https
+    secure: false,
     path: "/",
   });
 };
 
-// ✅ Cookie-only
 export const clearToken = () => {
   for (const k of COOKIE_TOKEN_KEYS) {
     Cookies.remove(k, { path: "/" });
@@ -46,16 +43,12 @@ const rawBaseQuery = fetchBaseQuery({
     headers.set("Accept", "application/json");
     headers.set("Accept-Language", lang);
 
-    // ❌ لا تفرض Content-Type دائماً
-    // headers.set("Content-Type", "application/json");
-
     if (token) headers.set("Authorization", `Bearer ${token}`);
 
     return headers;
   },
 });
 
-// ✅ لو رجع 401 → نظّف cookie token
 const baseQuery = async (args, api, extraOptions) => {
   const res = await rawBaseQuery(args, api, extraOptions);
 
@@ -78,6 +71,8 @@ export const apiSlice = createApi({
     "Order",
     "ProductCategory",
     "AdoptionApplication",
+    "BoardingReservation",
+    "BoardingService",
   ],
   endpoints: () => ({}),
 });

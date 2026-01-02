@@ -8,11 +8,10 @@ export const store = configureStore({
   },
   middleware: (getDefault) =>
     getDefault({
-      // تعطيل فحص الحالات الكبيرة لتجنب بطء المتصفح في بيئة التطوير
       immutableCheck: false,
       serializableCheck: false,
     }).concat(apiSlice.middleware),
-  devTools: true, // اختياري: لضمان عمل Redux DevTools بشكل جيد
+  devTools: true,
 });
 
 setupListeners(store.dispatch);

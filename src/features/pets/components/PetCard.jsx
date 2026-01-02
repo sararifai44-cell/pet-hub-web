@@ -1,12 +1,14 @@
 // src/features/pets/components/PetCard.jsx
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 
 export default function PetCard({ p, isAr, name, typeName, breedName, location }) {
   const t = (en, ar) => (isAr ? ar : en);
 
+  // ✅ يدعم string أو object {url/path}
   const imgSrc = useMemo(() => {
     const first =
       (Array.isArray(p?.images) && p.images.length && p.images[0]) ||
@@ -16,12 +18,18 @@ export default function PetCard({ p, isAr, name, typeName, breedName, location }
       p?.imageUrl ||
       null;
 
-    // ✅ يدعم string أو object {url}
     if (!first) return null;
     return typeof first === "string" ? first : first?.url || first?.path || null;
   }, [p]);
 
+  const [imgError, setImgError] = useState(false);
+
   const adoptable = p?.is_adoptable === true;
+  const notAdoptable = !adoptable;
+
+  const subtitle =
+    [typeName, breedName].filter(Boolean).join(" • ") ||
+    t("No details", "لا يوجد تفاصيل");
 
   return (
     <Card
@@ -29,23 +37,21 @@ export default function PetCard({ p, isAr, name, typeName, breedName, location }
         group overflow-hidden rounded-lg border-[#E7DCD0] bg-white shadow-sm
         transition-all duration-300
         hover:shadow-md hover:-translate-y-0.5 hover:scale-[1.02]
-        min-h-[300px]
-        flex flex-col
       "
     >
-      {/* ✅ صورة أطول */}
-      <div className="relative w-full overflow-hidden bg-[#FBF7F1]">
-        <div className="aspect-[1/1] w-full overflow-hidden">
-          {imgSrc ? (
+      <div className="relative">
+        {/* ✅ نفس نسبة الصورة تبع ProductCard */}
+        <div className="aspect-[16/10] w-full bg-[#FBF7F1] overflow-hidden">
+          {imgSrc && !imgError ? (
             <img
               src={imgSrc}
               alt={name}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+              className={`h-full w-full object-cover transition-transform duration-500 ${
+                notAdoptable ? "grayscale" : "group-hover:scale-[1.06]"
+              }`}
               draggable="false"
               loading="lazy"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
+              onError={() => setImgError(true)}
             />
           ) : (
             <div className="h-full w-full grid place-items-center text-[#2F2A24]/40 font-semibold text-sm">
@@ -53,24 +59,32 @@ export default function PetCard({ p, isAr, name, typeName, breedName, location }
             </div>
           )}
         </div>
+
+        {/* ✅ Overlay مثل SOLD OUT بس للتبنّي */}
+        {notAdoptable ? (
+          <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] grid place-items-center">
+            <Badge className="rounded-md bg-[#2F2A24] text-white border-none text-[10px] px-2 py-1 shadow-sm font-medium">
+              {t("NOT ADOPTABLE", "غير قابل للتبنّي")}
+            </Badge>
+          </div>
+        ) : null}
       </div>
 
-      <CardContent className="p-3 flex flex-col flex-1">
+      <CardContent className="p-3">
         <div className="min-w-0">
           <CardTitle className="text-[13px] font-medium text-[#2F2A24] truncate leading-tight">
             {name}
           </CardTitle>
 
           <p className="mt-1 text-[11px] font-normal text-[#2F2A24]/60 line-clamp-2">
-            {[typeName, breedName].filter(Boolean).join(" • ") ||
-              t("No details", "لا يوجد تفاصيل")}
+            {subtitle}
           </p>
         </div>
 
         <div className="my-3 h-px w-full bg-[#E7DCD0]" />
 
-        <div className="mt-auto flex items-center justify-between gap-2">
-          {/* ✅ Details = مودال */}
+        {/* ✅ بس الأزرار (بدون Status) */}
+        <div className="flex items-center gap-2">
           <Button
             asChild
             variant="outline"
@@ -81,15 +95,12 @@ export default function PetCard({ p, isAr, name, typeName, breedName, location }
             </Link>
           </Button>
 
-          {/* ✅ Adopt = صفحة apply كاملة */}
           <Button
             asChild
             className="h-8 flex-1 rounded-md bg-[#3C7A57] text-white hover:bg-[#2F5F43] px-3 text-[11px] font-medium disabled:opacity-50"
             disabled={!adoptable}
           >
-            <Link to={`/pets/${p.id}/apply`}>
-              {t("Adopt", "تبنّي")}
-            </Link>
+            <Link to={`/pets/${p.id}/apply`}>{t("Adopt", "تبنّي")}</Link>
           </Button>
         </div>
       </CardContent>

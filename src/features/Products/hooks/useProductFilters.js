@@ -1,13 +1,7 @@
 // src/features/Products/hooks/useProductFilters.js
 import { useCallback, useMemo } from "react";
 
-export function useProductFilters({
-  products,
-  isAr,
-  query,
-  availability,
-  sort,
-}) {
+export function useProductFilters({ products, isAr, query, sort }) {
   const getName = useCallback(
     (p) => (isAr ? p?.name_ar || p?.name || "" : p?.name_en || p?.name || ""),
     [isAr]
@@ -22,13 +16,6 @@ export function useProductFilters({
       const hay = `${name} ${desc}`.toLowerCase();
 
       const matchQ = q ? hay.includes(q) : true;
-
-      // ✅ المعتمد: stock_quantity
-      const stockQty = Number(p?.stock_quantity ?? 0);
-
-      if (availability === "in_stock") return matchQ && stockQty > 0;
-      if (availability === "out_of_stock") return matchQ && stockQty <= 0;
-
       return matchQ;
     });
 
@@ -42,7 +29,7 @@ export function useProductFilters({
       list = [...list].sort((a, b) => priceNum(b) - priceNum(a));
 
     return list;
-  }, [products, query, availability, sort, getName]);
+  }, [products, query, sort, getName]);
 
   return { filtered, getName };
 }

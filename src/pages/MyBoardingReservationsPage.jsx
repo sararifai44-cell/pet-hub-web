@@ -178,7 +178,6 @@ export default function MyBoardingReservationsPage() {
                         </Badge>
                       </div>
 
-                      {/* ✅ mini info row */}
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <Badge className="rounded-full border border-[#E7DCD0] bg-white text-[#2F2A24]">
                           {t("Services", "الخدمات")}: {servicesCount}

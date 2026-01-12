@@ -399,7 +399,6 @@ export default function OrdersPage() {
                         <div className="p-4 sm:p-5">
                           <ItemsTable items={o.items || []} isAr={isAr} t={t} />
 
-                          {/* ✅ Total badge بالنص بعد نهاية الاوردر */}
                           <div className="mt-5 flex justify-center">
                             <div className="inline-flex items-center gap-2 rounded-full border border-[#E7DCD0] bg-[#FBF7F1] px-5 py-2 text-sm">
                               <span className="text-slate-500 font-medium">

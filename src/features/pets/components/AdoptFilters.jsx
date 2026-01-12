@@ -1,4 +1,3 @@
-// src/features/pets/components/AdoptFilters.jsx
 import React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +21,7 @@ export default function AdoptFilters({
   const triggerClass =
     "h-10 min-w-[160px] rounded-md border border-[#E7DCD0] bg-white px-3 " +
     "text-[12px] font-medium text-[#2F2A24] shadow-sm " +
-    "hover:bg-[#FBF7F1] " +
+    "hover:bg-[#FBF7F1] hover:border-[#A67C52] " + // بني فاتح عند الـ hover
     "focus:outline-none focus:ring-2 focus:ring-[#3C7A57]/20 focus:border-[#3C7A57]/50 " +
     "data-[state=open]:ring-2 data-[state=open]:ring-[#3C7A57]/20 data-[state=open]:border-[#3C7A57]/50";
 
@@ -32,7 +31,7 @@ export default function AdoptFilters({
   const itemClass =
     "rounded-sm text-[12px] font-medium text-[#2F2A24] " +
     "data-[highlighted]:bg-[#3C7A57]/10 data-[highlighted]:text-[#2F2A24] " +
-    "data-[state=checked]:bg-[#3C7A57]/15 data-[state=checked]:text-[#2F2A24]";
+    "data-[state=checked]:bg-[#A67C52]/15 data-[state=checked]:text-[#2F2A24]"; // بني فاتح عند الاختيار
 
   // ✅ إذا القيمة all نخليها "" ليظهر placeholder بدل All
   const genderValue = gender === "all" ? "" : gender;
@@ -85,7 +84,7 @@ export default function AdoptFilters({
         type="button"
         variant="ghost"
         onClick={onReset}
-        className="h-10 rounded-md px-3 text-[12px] font-medium text-[#8C8276] hover:text-[#2F2A24] hover:bg-[#FBF7F1]"
+        className="h-10 rounded-md px-3 text-[12px] font-medium text-[#8C8276] hover:text-[#A67C52] hover:bg-[#FBF7F1]"
       >
         {t("Reset", "مسح")}
       </Button>

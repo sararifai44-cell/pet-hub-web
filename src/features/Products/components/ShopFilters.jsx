@@ -29,7 +29,6 @@ export default function ShopFilters({ sort, setSort, isAr, onReset }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* ✅ Availability / Stock filter removed */}
 
       <Select value={sort} onValueChange={setSort}>
         <SelectTrigger className={triggerClass}>

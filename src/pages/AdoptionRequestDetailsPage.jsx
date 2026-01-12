@@ -1,194 +1,205 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link, useParams } from "react-router-dom";
 import Navbar from "@/components/common/Navbar";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, HeartHandshake } from "lucide-react";
+import { 
+  ArrowLeft, 
+  Calendar, 
+  Info, 
+  CheckCircle2, 
+  Clock, 
+  AlertCircle,
+  MessageSquare,
+  Heart
+} from "lucide-react";
+
 import { useGetMyAdoptionApplicationByIdQuery } from "@/features/adoptionApplications/adoptionApplicationsApiSlice";
 
 function useIsArabic() {
-  const [isAr, setIsAr] = useState(false);
-  useEffect(() => {
-    const lang = (navigator.language || "").toLowerCase();
-    setIsAr(lang.startsWith("ar"));
-  }, []);
-  return isAr;
-}
-
-function formatDate(dt, isAr) {
-  if (!dt) return "";
-  try {
-    const d = new Date(dt);
-    return d.toLocaleDateString(isAr ? "ar-EG" : "en-US", {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-    });
-  } catch {
-    return "";
-  }
-}
-
-const RAW_API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/";
-const SERVER_ORIGIN =
-  RAW_API_URL.replace(/\/api\/?$/i, "").replace(/\/+$/, "") || "http://127.0.0.1:8000";
-
-const normalizeUrl = (u) => {
-  if (!u) return "";
-  if (/^https?:\/\//i.test(u)) return u;
-  return `${SERVER_ORIGIN}${u.startsWith("/") ? "" : "/"}${u}`;
-};
-
-function statusBadgeClass(status = "") {
-  const s = String(status).toLowerCase();
-  if (s.includes("approved")) return "bg-emerald-50 text-emerald-700 border-emerald-100";
-  if (s.includes("rejected")) return "bg-red-50 text-red-700 border-red-100";
-  return "bg-orange-50 text-orange-700 border-orange-100";
+  const lang = typeof window !== "undefined" ? (navigator.language || "").toLowerCase() : "en";
+  return lang.startsWith("ar");
 }
 
 export default function AdoptionRequestDetailsPage() {
   const isAr = useIsArabic();
   const t = (en, ar) => (isAr ? ar : en);
+  
   const { id } = useParams();
 
-  const { data, isLoading } = useGetMyAdoptionApplicationByIdQuery(id);
-  const a = data; // بسبب transformResponse -> pickSingle
-  const pet = a?.pet;
+  const { data: application, isLoading, isError, error } = useGetMyAdoptionApplicationByIdQuery(id, {
+    skip: !id,
+  });
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
+      <div className="min-h-screen bg-[#FDFCFB]">
         <Navbar />
-        <div className="pt-32 text-center text-[#3C7A57] font-medium animate-pulse">
-          {t("Loading...", "جاري التحميل...")}
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-pulse text-[#3C7A57] font-medium">
+            {t("Loading request details...", "جاري تحميل تفاصيل الطلب...")}
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!a) {
+
+  if (isError || !application) {
     return (
-      <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
+      <div className="min-h-screen bg-[#FDFCFB]">
         <Navbar />
-        <div className="pt-32 text-center text-slate-500 font-medium">
-          {t("Request not found.", "الطلب غير موجود.")}
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+          <AlertCircle size={48} className="text-red-400" />
+          <h2 className="text-xl font-bold text-[#2F2A24]">
+            {error?.status === 401 ? t("Unauthorized", "غير مصرح بالدخول") : t("Error", "حدث خطأ")}
+          </h2>
+          <p className="text-[#2F2A24]/70">
+            {error?.status === 401 
+              ? t("Please login to see this request.", "يرجى تسجيل الدخول لعرض هذا الطلب.")
+              : t("We couldn't find the request you're looking for.", "لم نتمكن من العثور على الطلب.")}
+          </p>
+          <Link to="/adoption-requests" className="px-6 py-2 bg-[#3C7A57] text-white rounded-xl font-bold">
+            {t("Go to My Requests", "الذهاب لطلباتي")}
+          </Link>
         </div>
       </div>
     );
   }
 
-  const img = pet?.cover_image ? normalizeUrl(pet.cover_image) : "/placeholder.png";
+ 
+  const appData = application; 
+  const pet = appData?.pet;
+  const status = appData?.status?.toLowerCase();
+
+  const getStatusInfo = (status) => {
+    switch (status) {
+      case "approved":
+        return { 
+          icon: <CheckCircle2 className="text-green-500" size={18} />, 
+          bg: "bg-green-50", 
+          text: "text-green-700",
+          label: t("Approved", "مقبول")
+        };
+      case "rejected":
+        return { 
+          icon: <AlertCircle className="text-red-500" size={18} />, 
+          bg: "bg-red-50", 
+          text: "text-red-700",
+          label: t("Rejected", "مرفوض")
+        };
+      default:
+        return { 
+          icon: <Clock className="text-amber-500" size={18} />, 
+          bg: "bg-amber-50", 
+          text: "text-amber-700",
+          label: t("Pending", "قيد الانتظار")
+        };
+    }
+  };
+
+  const statusInfo = getStatusInfo(status);
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] text-[#2F2A24]" dir={isAr ? "rtl" : "ltr"}>
+    <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
       <Navbar />
 
-      <main className="pt-28 pb-20">
-        <div className="mx-auto max-w-5xl px-4">
-          {/* Header */}
-          <header className="mb-7 rounded-xl border border-[#E7DCD0] bg-[#F7F3F0] p-4 sm:p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <Link
-                  to={-1}
-                  className="h-9 w-9 rounded-full bg-white shadow-sm border border-[#E7DCD0] inline-flex items-center justify-center"
-                >
-                  <ArrowLeft size={18} className={isAr ? "rotate-180" : ""} />
-                </Link>
+      <main className="mx-auto max-w-5xl px-4 md:px-8 pt-6 pb-20">
+        <header className="mb-7 rounded-xl border border-[#E7DCD0] bg-[#F7F3F0] p-4 sm:p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Link
+                to="/adoption-requests"
+                className="h-9 w-9 rounded-full bg-white shadow-sm border border-[#E7DCD0] inline-flex items-center justify-center transition-colors hover:bg-white/80"
+              >
+                <ArrowLeft size={18} className={isAr ? "rotate-180" : ""} />
+              </Link>
+              <div>
+                <h1 className="text-lg font-extrabold text-[#2F2A24]">
+                  {t("Request Details", "تفاصيل الطلب")}
+                </h1>
+                <p className="text-[11px] font-medium text-[#8C8276]">
+                  ID: #{id} • {appData.created_at ? new Date(appData.created_at).toLocaleDateString(isAr ? 'ar-EG' : 'en-US') : ''}
+                </p>
+              </div>
+            </div>
+            
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border border-current/10 ${statusInfo.bg} ${statusInfo.text}`}>
+              {statusInfo.icon}
+              <span className="text-xs font-bold">{statusInfo.label}</span>
+            </div>
+          </div>
+        </header>
 
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-white border border-[#E7DCD0] flex items-center justify-center">
-                    <HeartHandshake className="h-5 w-5 text-[#3C7A57]" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-6">
+            <div className="rounded-2xl border border-[#E7DCD0] bg-white shadow-sm overflow-hidden">
+              <div className="aspect-square bg-[#FBF7F1] relative">
+                {pet?.cover_image || pet?.image_url ? (
+                  <img 
+                    src={pet?.cover_image || pet?.image_url} 
+                    alt={pet?.name} 
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-[#E7DCD0]"><Heart size={48} /></div>
+                )}
+              </div>
+              <div className="p-5">
+                <h3 className="text-lg font-black text-[#2F2A24] mb-3">{pet?.name || t("Pet Name", "اسم الحيوان")}</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-[#2F2A24]/70">
+                    <Info size={14} className="text-[#3C7A57]" />
+                    <span className="font-bold">{t("Breed:", "السلالة:")}</span>
+                    <span>{pet?.breed || t("Not specified", "غير محدد")}</span>
                   </div>
-                  <div>
-                    <h1 className="text-xl font-bold tracking-tight">
-                      {t("Adoption Request Details", "تفاصيل طلب التبني")}
-                    </h1>
-                    <p className="text-[12px] text-slate-500 font-medium">
-                      {t("Request ID", "رقم الطلب")}: #{a.id}
-                    </p>
+                  <div className="flex items-center gap-2 text-xs text-[#2F2A24]/70">
+                    <Calendar size={14} className="text-[#3C7A57]" />
+                    <span className="font-bold">{t("Age:", "العمر:")}</span>
+                    <span>{pet?.age || t("Not specified", "غير محدد")}</span>
                   </div>
                 </div>
               </div>
-
-              <Badge className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase ${statusBadgeClass(a.status)}`}>
-                {a.status}
-              </Badge>
             </div>
-          </header>
+          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Pet card */}
-            <Card className="rounded-xl border-[#E7DCD0]/70 bg-white shadow-sm lg:col-span-2">
-              <CardContent className="p-5">
-                <div className={`flex gap-4 ${isAr ? "flex-row-reverse" : ""}`}>
-                  <img
-                    src={img}
-                    alt={pet?.name || "Pet"}
-                    className="h-28 w-28 rounded-2xl object-cover border border-slate-100 bg-slate-50"
-                    loading="lazy"
-                    onError={(e) => (e.currentTarget.src = "/placeholder.png")}
-                  />
+          <div className="lg:col-span-2 space-y-6">
+            <div className="rounded-2xl border border-[#E7DCD0] bg-white shadow-sm p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <MessageSquare className="text-[#3C7A57]" size={20} />
+                <h2 className="font-extrabold text-[#2F2A24]">{t("Your Motivation", "سبب التبنّي")}</h2>
+              </div>
+              <div className="bg-[#FBF7F1] border border-[#E7DCD0]/40 rounded-xl p-4">
+                <p className="text-sm leading-relaxed text-[#2F2A24]/80 whitespace-pre-wrap">
+                  {appData?.motivation || t("No message provided.", "لا يوجد رسالة مرفقة.")}
+                </p>
+              </div>
+            </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="text-2xl font-bold truncate">{pet?.name || "-"}</div>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge variant="outline" className="rounded-full text-[10px] font-bold uppercase">
-                        {t("Gender", "الجنس")}: {pet?.gender || "-"}
-                      </Badge>
-                      <Badge variant="outline" className="rounded-full text-[10px] font-bold uppercase">
-                        {t("Birth", "تاريخ الميلاد")}: {pet?.date_of_birth || "-"}
-                      </Badge>
-                    </div>
-
-                    <p className="mt-4 text-sm text-slate-600 leading-relaxed">
-                      {pet?.description || "-"}
+            <div className="rounded-2xl border border-[#E7DCD0] bg-white shadow-sm p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="text-[#3C7A57]" size={20} />
+                <h2 className="font-extrabold text-[#2F2A24]">{t("Update History", "تاريخ التحديث")}</h2>
+              </div>
+              <div className="relative border-l-2 border-[#E7DCD0] ml-3 pr-4 space-y-6 py-2">
+                <div className="relative">
+                  <div className="absolute -left-[25px] h-3 w-3 rounded-full bg-green-500 border-2 border-white shadow-sm"></div>
+                  <p className="text-[11px] font-bold text-[#3C7A57]">{t("Application Submitted", "تم إرسال الطلب")}</p>
+                  <p className="text-[10px] text-[#8C8276]">
+                    {appData.created_at ? new Date(appData.created_at).toLocaleString(isAr ? 'ar-EG' : 'en-US') : ''}
+                  </p>
+                </div>
+                {status !== "pending" && (
+                  <div className="relative">
+                    <div className={`absolute -left-[25px] h-3 w-3 rounded-full border-2 border-white shadow-sm ${status === "approved" ? "bg-green-500" : "bg-red-500"}`}></div>
+                    <p className="text-[11px] font-bold text-[#2F2A24]">
+                      {status === "approved" ? t("Request Approved", "تمت الموافقة على الطلب") : t("Request Rejected", "تم رفض الطلب")}
                     </p>
-
-                    <div className="mt-5">
-                      <Button asChild variant="outline" className="rounded-full border-[#E7DCD0] bg-white">
-                        <Link to={`/pets/${pet?.id}`}>{t("Open Pet", "فتح صفحة الحيوان")}</Link>
-                      </Button>
-                    </div>
+                    <p className="text-[10px] text-[#8C8276]">
+                      {appData.updated_at ? new Date(appData.updated_at).toLocaleString(isAr ? 'ar-EG' : 'en-US') : ''}
+                    </p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Request info */}
-            <Card className="rounded-xl border-[#E7DCD0]/70 bg-white shadow-sm">
-              <CardContent className="p-5 space-y-4">
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    {t("Applied At", "تاريخ التقديم")}
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-700 flex items-center gap-2">
-                    <Calendar size={14} />
-                    {formatDate(a.created_at, isAr)}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    {t("Last Update", "آخر تحديث")}
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-700">
-                    {formatDate(a.updated_at, isAr)}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-100 bg-white p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    {t("Motivation", "سبب التبني")}
-                  </div>
-                  <div className="mt-2 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
-                    {a.motivation || "-"}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </main>

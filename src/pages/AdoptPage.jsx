@@ -36,40 +36,33 @@ export default function AdoptPage() {
   );
   const t = (en, ar) => (isAr ? ar : en);
 
-  // pagination (نفس الربط)
   const [page, setPage] = useState(1);
 
-  // data (نفس الربط)
   const { data: petsRes, isLoading, isError, error, refetch, isFetching } =
     useGetPetsQuery({ page });
   const pets = useMemo(() => asArray(petsRes), [petsRes]);
   const meta = petsRes?.meta;
 
-  // ✅ types + breeds from API (نفس الربط)
   const { data: typesRes, isLoading: typesLoading } = useGetPetTypesQuery({ page: 1 });
   const { data: breedsRes, isLoading: breedsLoading } = useGetPetBreedsQuery({ page: 1 });
 
   const petTypes = useMemo(() => asArray(typesRes?.data ?? typesRes), [typesRes]);
   const petBreeds = useMemo(() => asArray(breedsRes?.data ?? breedsRes), [breedsRes]);
 
-  // filters (نفس المنطق)
   const [q, setQ] = useState("");
   const [gender, setGender] = useState("all");
   const [age, setAge] = useState("all");
   const [onlyAdoptable, setOnlyAdoptable] = useState(false);
 
-  // type/breed ids (single-select)
   const [typeId, setTypeId] = useState("all");
   const [breedId, setBreedId] = useState("all");
 
-  // breeds filtered by selected type (نفسه)
   const availableBreeds = useMemo(() => {
     if (typeId === "all") return petBreeds;
     const n = Number(typeId);
     return petBreeds.filter((b) => Number(b?.pet_type?.id) === n);
   }, [petBreeds, typeId]);
 
-  // إذا النوع تغيّر والسلالة مو من ضمنهم -> رجّع all (نفسه)
   useEffect(() => {
     if (breedId === "all") return;
     const ok = availableBreeds.some((b) => Number(b.id) === Number(breedId));
@@ -86,7 +79,6 @@ export default function AdoptPage() {
     setPage(1);
   }, []);
 
-  // hook (مثل useProductFilters)
   const { filtered, getName, getTypeName, getBreedName } = usePetFilters({
     pets,
     isAr,
@@ -119,7 +111,7 @@ export default function AdoptPage() {
         <main className="mx-auto max-w-7xl px-4 md:px-8 pt-6 pb-20">
           <div className="rounded-xl border border-[#E7DCD0] bg-white p-6">
             <div className="text-lg font-semibold text-[#2F2A24]">
-              {t("Couldn’t load pets", "ما قدرنا نجيب الحيوانات")}
+              {t("Couldn’t load pets")}
             </div>
             <div className="mt-2 text-sm text-[#2F2A24]/70">
               {status ? `${t("Status", "الحالة")}: ${status}` : t("Please try again.", "جرّبي مرة تانية.")}
@@ -144,7 +136,6 @@ export default function AdoptPage() {
       <Navbar />
 
       <main className="mx-auto max-w-7xl px-4 md:px-8 pt-6 pb-20">
-        {/* ✅ Header مثل Shop */}
         <header className="mb-8 py-5 px-8 rounded-xl bg-[#F7F3F0] border border-[#E7DCD0]/50 relative flex flex-row items-center justify-between overflow-hidden">
         <div className="relative z-10 space-y-1">
 <h1 className="text-xl md:text-2xl font-semibold text-[#2F2A24]">

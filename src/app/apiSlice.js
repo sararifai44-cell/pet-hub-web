@@ -6,27 +6,38 @@ const RAW_API_URL =
   import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/";
 const API_URL = RAW_API_URL.replace(/\/+$/, "") + "/";
 
-const COOKIE_TOKEN_KEYS = ["token", "access_token"];
+// ✅ كوكي خاصة بالويب فقط
+export const WEB_TOKEN_KEY = "pethub_web_token";
+
+// (اختياري) مفاتيح قديمة للتنظيف مرة واحدة
+const LEGACY_KEYS = ["token", "access_token"];
 
 export const getToken = () => {
-  const token = Cookies.get("token") || Cookies.get("access_token");
+  const token = Cookies.get(WEB_TOKEN_KEY);
   if (!token || token === "undefined" || token === "null") return null;
   return token;
 };
 
-export const setToken = (token) => {
+// ✅ دعم remember (جلسة أو 30 يوم)
+export const setToken = (token, { remember = false } = {}) => {
   if (!token) return;
 
-  Cookies.set("token", token, {
-    expires: 7,
+  const options = {
     sameSite: "lax",
     secure: false,
     path: "/",
-  });
+  };
+
+  if (remember) options.expires = 30;
+
+  Cookies.set(WEB_TOKEN_KEY, token, options);
 };
 
 export const clearToken = () => {
-  for (const k of COOKIE_TOKEN_KEYS) {
+  Cookies.remove(WEB_TOKEN_KEY, { path: "/" });
+
+  // ✅ تنظيف مفاتيح قديمة لتجنب أي خربطة/كود قديم
+  for (const k of LEGACY_KEYS) {
     Cookies.remove(k, { path: "/" });
   }
 };

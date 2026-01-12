@@ -113,11 +113,9 @@ export default function MyAdoptionRequestsPage() {
     <div className="min-h-screen bg-[#FDFCFB] text-[#2F2A24]" dir={isAr ? "rtl" : "ltr"}>
       <Navbar />
 
-      {/* تقليل pt-16 لرفع كل شيء للأعلى */}
       <main className="pt-16 pb-12">
         <div className="mx-auto max-w-6xl px-4">
           
-          {/* Back Button - تقليل الهامش mb-2 */}
           <div className="mb-2 flex items-center">
             <Link
               to={-1}
@@ -130,7 +128,6 @@ export default function MyAdoptionRequestsPage() {
             </Link>
           </div>
 
-          {/* Header - تقليل mb-4 و p-5 */}
           <header className="mb-4 rounded-xl border border-[#E7DCD0] bg-[#F7F3F0] p-5 shadow-sm">
             <div className="flex flex-col gap-4">
               

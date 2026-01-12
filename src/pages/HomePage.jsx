@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-/** ✅ Fast slider (not slow) */
+
 function CenterGallerySlider({ images = [] }) {
   const [idx, setIdx] = useState(0);
   const total = images.length;
@@ -117,14 +117,14 @@ export default function HomePage() {
     desc: "Find a loving companion and give them a forever home.",
     accent: "#FF705A",
     to: "/pets",
-    img: "/h3-cat-pet-container.jpg", // ✅ صورة التبني
+    img: "/h3-cat-pet-container.jpg", 
   },
   {
     title: "Shop",
     desc: "Food, toys, and essentials picked with care.",
     accent: "#2DD4BF",
     to: "/shop",
-    img: "/shop.jpg", // حطي الصورة لاحقاً
+    img: "/shop.jpg", 
   },
   {
     title: "Hotel",
@@ -299,7 +299,6 @@ export default function HomePage() {
 
         {/* ABOUT US */}
         <section className="mx-auto max-w-6xl px-4 py-10 md:px-6">
-          {/* قللنا py من 20 إلى 10 */}
           <div className="mb-12 flex flex-col items-center text-center space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-50 border border-green-100"></div>
 

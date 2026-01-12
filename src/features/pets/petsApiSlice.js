@@ -23,7 +23,6 @@ export const petsApiSlice = apiSlice.injectEndpoints({
       },
     }),
 
-    // ✅ GET /api/pets/:id (show)
     getPetById: builder.query({
       query: (id) => ({
         url: `pets/${id}`,

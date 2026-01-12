@@ -6,6 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
+import Cookies from "js-cookie";
+import { useNavigate, useLocation } from "react-router-dom";
+
+// ✅ Dialog (shadcn/ui)
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 import ShopFilters from "@/features/Products/components/ShopFilters";
 import ProductCard from "@/features/Products/components/ProductCard";
@@ -13,7 +25,6 @@ import { useAddItemToCartMutation } from "@/features/cart/cartApiSlice";
 import { useGetProductsQuery } from "@/features/Products/productsApiSlice";
 import { useProductFilters } from "@/features/Products/hooks/useProductFilters";
 
-// ✅ API for filters (مثل pets)
 import { useGetPetTypesQuery } from "@/features/petTypes/petTypesApiSlice";
 import { useGetProductCategoriesQuery } from "@/features/productCategories/productCategoriesApiSlice";
 
@@ -31,22 +42,24 @@ export default function ShopPage() {
       : false
   );
 
+  const t = (en, ar) => (isAr ? ar : en);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("newest");
 
-  // ✅ Draft
   const [animalsDraft, setAnimalsDraft] = useState([]); // type IDs as strings
   const [categoriesDraft, setCategoriesDraft] = useState([]); // category IDs as strings
 
-  // ✅ Applied
   const [animalsApplied, setAnimalsApplied] = useState([]);
   const [categoriesApplied, setCategoriesApplied] = useState([]);
 
   const { data: productsRes, isLoading } = useGetProductsQuery({ page });
   const [addItemToCart, { isLoading: adding }] = useAddItemToCartMutation();
 
-  // ✅ filter data from API
   const { data: typesRes } = useGetPetTypesQuery({ page: 1 });
   const { data: catRes } = useGetProductCategoriesQuery({ page: 1 });
 
@@ -75,7 +88,6 @@ export default function ShopPage() {
     [productsRes]
   );
 
-  // ✅ فلترة عامة (بحث + ترتيب فقط)
   const { filtered: baseFiltered, getName } = useProductFilters({
     products,
     isAr,
@@ -83,7 +95,6 @@ export default function ShopPage() {
     sort,
   });
 
-  // ✅ فلترة اليسار بالـIDs (type + category)
   const filtered = useMemo(() => {
     return baseFiltered.filter((p) => {
       const typeId = p?.pet_type?.id != null ? String(p.pet_type.id) : null;
@@ -121,8 +132,35 @@ export default function ShopPage() {
     setCategoriesApplied([]);
   }, []);
 
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [authFrom, setAuthFrom] = useState("");
+
+  const isAuthError = (err) => {
+    const status = err?.status ?? err?.originalStatus;
+    const msg = err?.data?.message ?? err?.data?.error ?? err?.error ?? "";
+    return (
+      status === 401 ||
+      status === 403 ||
+      /unauthenticated|unauthorized|login/i.test(String(msg))
+    );
+  };
+
+  const openAuthDialog = useCallback(() => {
+    const from = location?.pathname + (location?.search || "");
+    setAuthFrom(from);
+    setAuthDialogOpen(true);
+  }, [location?.pathname, location?.search]);
+  // ============================================================================
+
   const handleAdd = useCallback(
     async (p) => {
+      // ✅ قبل ما نضرب API: إذا ما في توكن -> افتح Dialog مباشرة
+      const token = Cookies.get("token");
+      if (!token) {
+        openAuthDialog();
+        return;
+      }
+
       try {
         await addItemToCart({ product_id: p.id, quantity: 1 }).unwrap();
         toast.success(isAr ? "تمت الإضافة للسلة" : "Added to cart", {
@@ -130,20 +168,17 @@ export default function ShopPage() {
           duration: 2500,
         });
       } catch (e) {
-        const status = e?.status;
-        toast.error(
-          status === 401
-            ? isAr
-              ? "لازم تسجّلي دخول أولاً"
-              : "Please login first"
-            : isAr
-            ? "فشل في الإضافة للسلة"
-            : "Failed to add item",
-          { duration: 2500 }
-        );
+        if (isAuthError(e)) {
+          openAuthDialog(); // ✅ بدل toast للـ 401
+          return;
+        }
+
+        toast.error(isAr ? "فشل في الإضافة للسلة" : "Failed to add item", {
+          duration: 2500,
+        });
       }
     },
-    [addItemToCart, getName, isAr]
+    [addItemToCart, getName, isAr, openAuthDialog]
   );
 
   const onReset = useCallback(() => {
@@ -164,8 +199,42 @@ export default function ShopPage() {
     <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
       <Navbar />
 
+      {/* ✅ Dialog: لازم تسجل دخول (بدون تحويل مباشر) */}
+      <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold">
+              {t("Login required", "تسجيل الدخول مطلوب")}
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              {t("You need to login first to continue.", "لازم تسجل دخول أولاً لتكمل.")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setAuthDialogOpen(false)}
+              className="rounded-xl"
+            >
+              {t("Cancel", "إلغاء")}
+            </Button>
+
+            <Button
+              onClick={() => {
+                setAuthDialogOpen(false);
+                navigate("/login", { state: { from: authFrom }, replace: true });
+              }}
+              className="rounded-xl bg-[#3C7A57] hover:bg-[#336A4C] text-white"
+            >
+              {t("Go to Login", "تسجيل الدخول")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <main className="mx-auto max-w-7xl px-4 md:px-8 pt-6 pb-20">
-        {/* Header (نفسه) */}
+        {/* Header */}
         <header className="mb-8 py-5 px-8 rounded-xl bg-[#F7F3F0] border border-[#E7DCD0]/50 relative flex flex-row items-center justify-between overflow-hidden">
           <div className="relative z-10 space-y-1">
             <h1 className="text-xl md:text-2xl font-semibold text-[#2F2A24]">
@@ -208,7 +277,6 @@ export default function ShopPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* LEFT */}
           <aside className="lg:sticky lg:top-24 h-fit space-y-6">
-            {/* Types (من API) */}
             <div className="bg-white border border-[#E7DCD0] rounded-xl p-5 shadow-sm">
               <h3 className="text-xs font-semibold text-[#2F2A24] uppercase tracking-wider mb-4 flex items-center gap-2">
                 <Filter size={14} className="text-[#3C7A57]" />
@@ -239,7 +307,7 @@ export default function ShopPage() {
               </div>
             </div>
 
-            {/* Categories (من API) */}
+            {/* Categories */}
             <div className="bg-white border border-[#E7DCD0] rounded-xl p-5 shadow-sm">
               <h3 className="text-xs font-semibold text-[#2F2A24] uppercase tracking-wider mb-4">
                 {isAr ? "التصنيفات" : "Categories"}

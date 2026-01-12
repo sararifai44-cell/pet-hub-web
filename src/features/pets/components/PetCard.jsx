@@ -8,7 +8,6 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 export default function PetCard({ p, isAr, name, typeName, breedName, location }) {
   const t = (en, ar) => (isAr ? ar : en);
 
-  // ✅ يدعم string أو object {url/path}
   const imgSrc = useMemo(() => {
     const first =
       (Array.isArray(p?.images) && p.images.length && p.images[0]) ||
@@ -40,7 +39,6 @@ export default function PetCard({ p, isAr, name, typeName, breedName, location }
       "
     >
       <div className="relative">
-        {/* ✅ نفس نسبة الصورة تبع ProductCard */}
         <div className="aspect-[16/10] w-full bg-[#FBF7F1] overflow-hidden">
           {imgSrc && !imgError ? (
             <img
@@ -60,7 +58,6 @@ export default function PetCard({ p, isAr, name, typeName, breedName, location }
           )}
         </div>
 
-        {/* ✅ Overlay مثل SOLD OUT بس للتبنّي */}
         {notAdoptable ? (
           <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] grid place-items-center">
             <Badge className="rounded-md bg-[#2F2A24] text-white border-none text-[10px] px-2 py-1 shadow-sm font-medium">
@@ -83,7 +80,6 @@ export default function PetCard({ p, isAr, name, typeName, breedName, location }
 
         <div className="my-3 h-px w-full bg-[#E7DCD0]" />
 
-        {/* ✅ بس الأزرار (بدون Status) */}
         <div className="flex items-center gap-2">
           <Button
             asChild

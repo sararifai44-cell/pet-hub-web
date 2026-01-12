@@ -7,7 +7,6 @@ const pickSingle = (res) => res?.data ?? res;
 const normalizeProduct = (p) => {
   if (!p) return null;
 
-  // ✅ صور من الباك فقط
   const imagesRaw =
     (Array.isArray(p.images) && p.images) ||
     (Array.isArray(p.media) && p.media) ||
@@ -17,13 +16,10 @@ const normalizeProduct = (p) => {
     .map((x) => (typeof x === "string" ? x : x?.url || x?.path))
     .filter(Boolean);
 
-  // ✅ cover_image موجود بالـindex
   const cover = p?.cover_image || null;
 
-  // ✅ خلي cover أول شي
   const allImages = [cover, ...images].filter(Boolean);
 
-  // ✅ remove duplicates
   const uniqImages = Array.from(new Set(allImages));
 
   return {
@@ -37,13 +33,11 @@ const normalizeProduct = (p) => {
     stock_quantity: Number(p.stock_quantity ?? 0),
     is_active: !!p.is_active,
 
-    // ✅ مهمين للفلاتر
     category: p.category ?? null,
     pet_type: p.pet_type ?? null,
 
-    // ✅ للـUI
     cover_image: cover,
-    images: uniqImages, // array of url strings
+    images: uniqImages,
   };
 };
 

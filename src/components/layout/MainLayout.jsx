@@ -8,7 +8,6 @@ export default function MainLayout() {
   return (
     <div className="min-h-dvh">
       <Navbar />
-      {/* Navbar fixed => نترك مساحة فوق */}
       <div className="pt-16">
         <Toaster />
         <Outlet />

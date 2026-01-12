@@ -5,7 +5,6 @@ const asArray = (res) => (Array.isArray(res?.data) ? res.data : []);
 
 export const petTypesApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    // ✅ GET /api/pet-types
     getPetTypes: builder.query({
       query: ({ page = 1 } = {}) => ({
         url: "pet-types",

@@ -37,7 +37,6 @@ function useIsArabic() {
 
 const money = (n) => `$${Number(n || 0).toFixed(2)}`;
 
-/** ✅ Image helpers (نفس فكرة Orders) */
 const API_ORIGIN =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
@@ -52,7 +51,7 @@ const normalizeUrl = (u) => {
 const getItemImage = (it) => {
   const p = it?.product || {};
   const img =
-    p?.cover_image || // ✅ الأساسي عندك
+    p?.cover_image || 
     p?.image ||
     p?.image_url ||
     p?.imageUrl ||
@@ -119,7 +118,6 @@ export default function CartPage() {
     const q = Number(it.quantity);
     try {
       if (q <= 1) {
-        // بدل الحذف مباشرة، افتح تأكيد
         setPendingRemoveItem(it);
         setConfirmRemoveOpen(true);
       } else {
@@ -252,7 +250,7 @@ export default function CartPage() {
                               />
                             </div>
 
-                            {/* ✅ Delete icon (nicer) */}
+                          
                             <button
                               onClick={() => askRemoveAll(it)}
                               className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
@@ -284,7 +282,7 @@ export default function CartPage() {
                               </button>
                             </div>
 
-                            {/* ✅ Item total badge (soft + not too bold) */}
+                            
                             <div className="inline-flex items-center gap-2 rounded-full border border-[#E7DCD0] bg-[#FBF7F1] px-4 py-2 text-sm">
                               <span className="text-slate-500 font-medium">{t("Item Total", "إجمالي العنصر")}</span>
                               <span className="font-medium text-[#3C7A57]">{money(it.line_total)}</span>
@@ -369,7 +367,7 @@ export default function CartPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ✅ Confirm clear cart (small popup) */}
+      
       <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
         <DialogOverlay className="bg-black/30" />
         <DialogContent className="z-[220] max-w-sm rounded-2xl p-0 overflow-hidden border-none shadow-2xl bg-white">

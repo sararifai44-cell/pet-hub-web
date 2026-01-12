@@ -1,10 +1,11 @@
-// src/pages/PetDetailsPage.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import Navbar from "@/components/common/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
+import Cookies from "js-cookie";
 
 import {
   X,
@@ -18,6 +19,16 @@ import {
 } from "lucide-react";
 
 import { useGetPetByIdQuery } from "@/features/pets/petsApiSlice";
+
+// ✅ Dialog (shadcn/ui)
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 function useIsArabic() {
   const [isAr, setIsAr] = useState(false);
@@ -60,6 +71,17 @@ export default function PetDetailsPage() {
     else navigate("/pets");
   };
 
+  // ===================== ✅ AUTH DIALOG =====================
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [authFrom, setAuthFrom] = useState("");
+
+  const openAuthDialog = useCallback(() => {
+    // الهدف بعد تسجيل الدخول: صفحة طلب التبني
+    setAuthFrom(`/pets/${id}/apply`);
+    setAuthDialogOpen(true);
+  }, [id]);
+  // ==========================================================
+
   const images = useMemo(() => {
     const list = [];
     if (pet?.cover_image) list.push(pet.cover_image);
@@ -99,6 +121,19 @@ export default function PetDetailsPage() {
   const cardClass = isModal
     ? "w-full max-w-5xl h-[86vh] rounded-[26px] bg-white shadow-2xl overflow-hidden"
     : "w-full max-w-6xl rounded-[26px] bg-white shadow-2xl overflow-hidden mx-auto";
+
+  // ✅ زر التبنّي
+  const onAdoptClick = () => {
+    if (!adoptable) return;
+
+    const token = Cookies.get("token");
+    if (!token) {
+      openAuthDialog();
+      return;
+    }
+
+    navigate(`/pets/${id}/apply`);
+  };
 
   if (isLoading) {
     return (
@@ -145,6 +180,36 @@ export default function PetDetailsPage() {
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-[#2F2A24]" dir={isAr ? "rtl" : "ltr"}>
       {!isModal ? <Navbar /> : null}
+
+      {/* ✅ Dialog: لازم تسجل دخول */}
+      <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold">
+              {t("Login required", "تسجيل الدخول مطلوب")}
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              {t("You need to login first to continue.", "لازم تسجل دخول أولاً لتكمل.")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setAuthDialogOpen(false)} className="rounded-xl">
+              {t("Cancel", "إلغاء")}
+            </Button>
+
+            <Button
+              onClick={() => {
+                setAuthDialogOpen(false);
+                navigate("/login", { replace: true, state: { from: authFrom } });
+              }}
+              className="rounded-xl bg-[#3C7A57] hover:bg-[#336A4C] text-white"
+            >
+              {t("Go to Login", "تسجيل الدخول")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <main className={shellClass} onClick={isModal ? close : undefined}>
         <div className={cardClass} onClick={isModal ? (e) => e.stopPropagation() : undefined}>
@@ -201,9 +266,7 @@ export default function PetDetailsPage() {
               </div>
 
               {description ? (
-                <div className="mt-3 text-sm text-[#2F2A24]/70 leading-relaxed text-center">
-                  {description}
-                </div>
+                <div className="mt-3 text-sm text-[#2F2A24]/70 leading-relaxed text-center">{description}</div>
               ) : (
                 <div className="mt-3 text-sm text-[#2F2A24]/50 text-center">
                   {t("No description.", "لا يوجد وصف.")}
@@ -236,13 +299,7 @@ export default function PetDetailsPage() {
                 <Button
                   className="flex-1 h-11 rounded-full bg-[#3C7A57] text-white hover:bg-[#336A4C]"
                   disabled={!adoptable}
-                  onClick={() =>
-                    alert(
-                      adoptable
-                        ? t("Adoption request UI (later)", "واجهة طلب التبني (لاحقاً)")
-                        : t("This pet is not adoptable.", "هذا الحيوان غير قابل للتبني.")
-                    )
-                  }
+                  onClick={onAdoptClick}
                 >
                   <HeartHandshake className="h-4 w-4" />
                   <span className={isAr ? "mr-2" : "ml-2"}>{t("Adopt", "تبنّي")}</span>
@@ -261,12 +318,10 @@ export default function PetDetailsPage() {
             {/* right slider */}
             <div className="bg-[#FBF7F1] border-t lg:border-t-0 lg:border-l border-[#E7DCD0] p-4 lg:p-5 overflow-y-auto">
               <div className="flex flex-col gap-3">
-                {/* ✅ FIXED HEIGHT IMAGE BOX (no more thumbnails being cut) */}
                 <div className="relative rounded-[20px] overflow-hidden bg-white border border-[#E7DCD0]">
                   <div className="relative w-full h-[260px] sm:h-[320px] md:h-[360px] lg:h-[420px] bg-[#FBF7F1] overflow-hidden">
                     {currentImg ? (
                       <>
-                        {/* background blur */}
                         <img
                           src={currentImg}
                           alt=""
@@ -274,7 +329,6 @@ export default function PetDetailsPage() {
                           draggable="false"
                           aria-hidden="true"
                         />
-                        {/* foreground (NO CROP) */}
                         <img
                           src={currentImg}
                           alt={name || `#${pet?.id}`}
@@ -333,7 +387,6 @@ export default function PetDetailsPage() {
                   ) : null}
                 </div>
 
-                {/* thumbnails */}
                 {images.length > 1 ? (
                   <div className="flex gap-2 overflow-x-auto pb-1">
                     {images.map((src, i) => (
@@ -349,13 +402,7 @@ export default function PetDetailsPage() {
                         ].join(" ")}
                         aria-label={`thumb-${i}`}
                       >
-                        <img
-                          src={src}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          draggable="false"
-                          loading="lazy"
-                        />
+                        <img src={src} alt="" className="h-full w-full object-cover" draggable="false" loading="lazy" />
                       </button>
                     ))}
                   </div>

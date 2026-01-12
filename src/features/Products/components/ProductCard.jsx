@@ -11,7 +11,6 @@ export default function ProductCard({ p, isAr, name, onAdd, adding }) {
   const stockNum = useMemo(() => Number(p?.stock_quantity ?? 0), [p?.stock_quantity]);
   const outOfStock = stockNum <= 0;
 
-  // ✅ صور من الباك فقط
   const imgSrc = useMemo(() => {
     const first = Array.isArray(p?.images) && p.images.length ? p.images[0] : null;
     return first || p?.cover_image || null;

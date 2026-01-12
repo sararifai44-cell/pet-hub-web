@@ -5,7 +5,7 @@ const pickSingle = (res) => res?.data ?? res;
 
 export const boardingApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    // ✅ GET /api/boarding-services
+    //  GET /api/boarding-services
     getBoardingServices: builder.query({
       query: () => ({
         url: "boarding-services",
@@ -20,7 +20,7 @@ export const boardingApiSlice = apiSlice.injectEndpoints({
       },
     }),
 
-    // ✅ POST /api/boarding/quote
+    // POST /api/boarding/quote
     getBoardingQuote: builder.mutation({
       query: (payload) => ({
         url: "boarding/quote",
@@ -30,7 +30,7 @@ export const boardingApiSlice = apiSlice.injectEndpoints({
       transformResponse: (res) => pickSingle(res),
     }),
 
-    // ✅ GET /api/my/boarding-reservations?page=1
+    // GET /api/my/boarding-reservations?page=1
     getMyBoardingReservations: builder.query({
       query: ({ page = 1 } = {}) => ({
         url: `my/boarding-reservations?page=${page}`,
@@ -45,7 +45,7 @@ export const boardingApiSlice = apiSlice.injectEndpoints({
       },
     }),
 
-    // ✅ GET /api/my/boarding-reservations/:id
+    // GET /api/my/boarding-reservations/:id
     getMyBoardingReservation: builder.query({
       query: (id) => ({
         url: `my/boarding-reservations/${id}`,
@@ -55,7 +55,7 @@ export const boardingApiSlice = apiSlice.injectEndpoints({
       providesTags: (res, err, id) => [{ type: "BoardingReservation", id }],
     }),
 
-    // ✅ POST /api/my/boarding-reservations
+    //  POST /api/my/boarding-reservations
     createBoardingReservation: builder.mutation({
       query: (payload) => ({
         url: "my/boarding-reservations",
@@ -66,7 +66,7 @@ export const boardingApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: [{ type: "BoardingReservation", id: "LIST" }],
     }),
 
-    // ✅ POST /api/my/boarding-reservations/:id/cancel
+    //  POST /api/my/boarding-reservations/:id/cancel
     cancelBoardingReservation: builder.mutation({
       query: (id) => ({
         url: `my/boarding-reservations/${id}/cancel`,

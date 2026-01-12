@@ -4,7 +4,7 @@ const pickSingle = (res) => res?.data ?? res;
 
 export const adoptionApplicationsApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    // ✅ POST /api/my/adoption-applications
+    //  POST /api/my/adoption-applications
     createAdoptionApplication: builder.mutation({
       query: ({ pet_id, motivation }) => ({
         url: "my/adoption-applications",
@@ -15,7 +15,7 @@ export const adoptionApplicationsApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: [{ type: "AdoptionApplication", id: "LIST" }],
     }),
 
-    // ✅ GET /api/my/adoption-applications?page=1
+    //  GET /api/my/adoption-applications?page=1
     getMyAdoptionApplications: builder.query({
       query: ({ page = 1 } = {}) => ({
         url: `my/adoption-applications?page=${page}`,
@@ -30,7 +30,7 @@ export const adoptionApplicationsApiSlice = apiSlice.injectEndpoints({
       },
     }),
 
-    // ✅ GET /api/my/adoption-applications/:id  (show/details)
+    //  GET /api/my/adoption-applications/:id  (show/details)
     getMyAdoptionApplicationById: builder.query({
       query: (id) => ({
         url: `my/adoption-applications/${id}`,
@@ -46,5 +46,5 @@ export const adoptionApplicationsApiSlice = apiSlice.injectEndpoints({
 export const {
   useCreateAdoptionApplicationMutation,
   useGetMyAdoptionApplicationsQuery,
-  useGetMyAdoptionApplicationByIdQuery, // ✅ NEW
+  useGetMyAdoptionApplicationByIdQuery,
 } = adoptionApplicationsApiSlice;

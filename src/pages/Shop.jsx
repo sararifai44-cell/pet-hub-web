@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
-import Cookies from "js-cookie";
 import { useNavigate, useLocation } from "react-router-dom";
+
+// ✅ بدل Cookies: استخدم توكن الموقع نفسه
+import { getToken } from "@/app/apiSlice";
 
 // ✅ Dialog (shadcn/ui)
 import {
@@ -155,7 +157,7 @@ export default function ShopPage() {
   const handleAdd = useCallback(
     async (p) => {
       // ✅ قبل ما نضرب API: إذا ما في توكن -> افتح Dialog مباشرة
-      const token = Cookies.get("token");
+      const token = getToken(); // ✅ التعديل الوحيد المهم
       if (!token) {
         openAuthDialog();
         return;
@@ -207,7 +209,10 @@ export default function ShopPage() {
               {t("Login required", "تسجيل الدخول مطلوب")}
             </DialogTitle>
             <DialogDescription className="text-sm">
-              {t("You need to login first to continue.", "لازم تسجل دخول أولاً لتكمل.")}
+              {t(
+                "You need to login first to continue.",
+                "لازم تسجل دخول أولاً لتكمل."
+              )}
             </DialogDescription>
           </DialogHeader>
 

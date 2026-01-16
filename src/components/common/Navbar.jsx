@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom"; // أضفنا useNavigate
-import { Menu, ShoppingBag, ClipboardList, User, HeartHandshake, Calendar, LogOut } from "lucide-react"; // أضفنا LogOut icon
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Menu } from "lucide-react";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,13 +16,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { getToken } from "@/app/apiSlice";
-import { useLogoutMutation } from "@/features/auth/authApiSlice"; 
+import { useLogoutMutation } from "@/features/auth/authApiSlice";
+import NotificationsDropdown from "@/features/notifications/components/NotificationsDropdown";
 
 const navItems = [
   { to: "/", label: "Home" },
   { to: "/pets", label: "Adopt" },
   { to: "/shop", label: "Shop" },
   { to: "/boarding", label: "Boarding" },
+  // بتضل بالمنيو الرئيسية
+  { to: "/medical-care", label: "Medical Care" },
 ];
 
 export default function Navbar() {
@@ -30,8 +33,8 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isAuthed, setIsAuthed] = useState(() => !!getToken());
-  
-  const [logout, { isLoading: isLoggingOut }] = useLogoutMutation(); // هوك تسجيل الخروج
+
+  const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -48,7 +51,7 @@ export default function Navbar() {
     try {
       await logout().unwrap();
       setIsAuthed(false);
-      toast.success("Logged out", { description: "You have been signed out successfully." });
+      toast.success("Logged out successfully");
       navigate("/");
     } catch (err) {
       setIsAuthed(false);
@@ -56,129 +59,223 @@ export default function Navbar() {
     }
   };
 
-  const headerClass = [
-    "fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl transition-colors",
-    scrolled ? "bg-[#F8F3ED]/95 border-[#E7DCD0]" : "bg-[#F8F3ED]/90 border-[#E7DCD0]",
-  ].join(" ");
+  const headerClass = `fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl transition-all duration-300 ${
+    scrolled
+      ? "bg-white/80 border-[#E7DCD0] shadow-sm"
+      : "bg-[#F8F3ED]/40 border-transparent"
+  }`;
 
-  const linkBase = "relative rounded-lg px-3 py-2 text-sm font-medium transition-colors";
-  const linkInactive = "text-[#2F2A24]/70 hover:text-[#2F2A24] hover:bg-[#2F2A24]/[0.03]";
-  const linkActive = "text-[#2F2A24] bg-[#2F2A24]/[0.04]";
-  const underlineClass = "bg-[#3C7A57]";
-  const noGlow = "shadow-none hover:shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0";
+  const iconWrapperBase =
+    "relative flex items-center justify-center h-12 w-12 rounded-full transition-all duration-300 border-none shadow-none bg-transparent hover:bg-transparent focus:ring-0 focus-visible:ring-0 group";
 
-  const loginBtnClass = "h-10 rounded-lg font-semibold transition-all border-[#E7DCD0] bg-white text-[#2F2A24] hover:bg-[#FBF7F1] " + noGlow;
-  const registerBtnClass = "h-10 rounded-lg font-semibold transition-all bg-[#3C7A57] text-white hover:bg-[#2F5F43] " + noGlow;
-  const iconBtnBase = "h-10 w-10 rounded-lg px-0 transition-all border border-[#E7DCD0] bg-white/75 text-[#2F2A24] " + noGlow;
-  const iconBtnActive = "bg-[#3C7A57]/10 border-[#3C7A57]/30 text-[#2F2A24]";
-
-  const isMyMenu = location.pathname.startsWith("/cart") || location.pathname.startsWith("/orders");
+  // ✅ dropdown paths (بدون medical-care)
+  const isMyMenu = [
+    "/cart",
+    "/orders",
+    "/adoption-requests",
+    "/my-boarding-reservations",
+    "/my-appointments",
+  ].some((path) => location.pathname.startsWith(path));
 
   return (
     <header className={headerClass}>
       <div className="mx-auto max-w-6xl px-4 md:px-6">
-        <div className="flex h-16 items-center justify-between gap-3">
-          
-          <Link to="/" className="flex items-center gap-2">
-            <img src="/pethub-logo (2).png" alt="Pet Hub Logo" className="h-8 w-8" />
-            <span className="text-lg font-bold text-[#2F2A24]">Pet Hub</span>
+        <div className="flex h-16 items-center justify-between gap-4">
+          {/* 1. Logo Section */}
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="transition-transform duration-500 group-hover:rotate-6">
+              <img
+                src="/pethub-logo (2).png"
+                alt="Logo"
+                className="h-10 w-auto object-contain"
+              />
+            </div>
+            <span className="text-lg font-black text-[#2F2A24] tracking-tighter">
+              Pet Hub
+            </span>
           </Link>
 
+          {/* 2. Desktop Navigation */}
           <nav className="hidden items-center gap-1 md:flex">
             {navItems.map((it) => (
               <NavLink key={it.to} to={it.to} end={it.to === "/"}>
                 {({ isActive }) => (
-                  <span className={[linkBase, isActive ? linkActive : linkInactive].join(" ")}>
+                  <span
+                    className={`relative rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200 uppercase tracking-tight ${
+                      isActive
+                        ? "text-[#3C7A57]"
+                        : "text-[#2F2A24]/60 hover:text-[#3C7A57]"
+                    }`}
+                  >
                     {it.label}
-                    {isActive && <span className={["absolute inset-x-3 -bottom-[7px] h-[2px] rounded-[2px]", underlineClass].join(" ")} />}
+                    {isActive && (
+                      <span className="absolute inset-x-4 -bottom-[2px] h-[2.5px] rounded-full bg-[#3C7A57]" />
+                    )}
                   </span>
                 )}
               </NavLink>
             ))}
           </nav>
 
-          <div className="hidden items-center gap-2 md:flex">
+          {/* 3. Action Icons */}
+          <div className="flex items-center gap-0.5">
             {isAuthed ? (
               <>
-                <Button asChild variant="outline" className={[iconBtnBase, location.pathname === "/cart" ? iconBtnActive : ""].join(" ")}>
-                  <Link to="/cart"><ShoppingBag className="h-[18px] w-[18px]" /></Link>
-                </Button>
+                <div className="hover:scale-110 transition-transform duration-300">
+                  <NotificationsDropdown
+                    customClass={`${iconWrapperBase} text-amber-500/80 hover:text-amber-500`}
+                  />
+                </div>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className={[iconBtnBase, isMyMenu ? iconBtnActive : ""].join(" ")}>
-                      <User className="h-[18px] w-[18px]" />
-                    </Button>
+                    <div className="hover:scale-110 transition-transform duration-300 cursor-pointer">
+                      <Button variant="ghost" className={`${iconWrapperBase} p-0`}>
+                        <AccountCircleIcon
+                          className={`!w-[30px] !h-[30px] transition-colors duration-300 ${
+                            isMyMenu
+                              ? "text-[#3C7A57]"
+                              : "text-[#3C7A57]/70 group-hover:text-[#3C7A57]"
+                          }`}
+                        />
+                      </Button>
+                    </div>
                   </DropdownMenuTrigger>
-<DropdownMenuContent
-  align="end"
-  className="w-48 p-2 rounded-xl bg-white text-[#2F2A24] border border-[#E7DCD0] shadow-xl opacity-100"
->                    <DropdownMenuLabel className="text-[10px] font-bold text-slate-400 uppercase">My Stuff</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
-                      <Link to="/orders" className="flex items-center gap-2 py-2 text-sm"><ClipboardList className="h-4 w-4" /> Orders</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
-                      <Link to="/adoption-requests" className="flex items-center gap-2 py-2 text-sm"><HeartHandshake className="h-4 w-4" /> Adoptions</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={handleLogout} 
-                      disabled={isLoggingOut}
-                      className="rounded-lg cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700 font-medium"
+
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-56 p-1.5 rounded-2xl border-[#E7DCD0] shadow-2xl bg-white/98 animate-in fade-in zoom-in-95 duration-200"
+                  >
+                    <DropdownMenuLabel className="px-3 py-2 text-[10px] font-bold uppercase text-stone-400 tracking-widest">
+                      Personal Space
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-stone-100" />
+
+                    <DropdownMenuItem
+                      asChild
+                      className="rounded-xl cursor-pointer py-2.5 focus:bg-red-50 focus:text-red-600 transition-colors"
                     >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      {isLoggingOut ? "Logging out..." : "Logout"}
+                      <Link
+                        to="/cart"
+                        className="w-full px-2 font-medium text-sm text-stone-600"
+                      >
+                        My Cart
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      asChild
+                      className="rounded-xl cursor-pointer py-2.5 focus:bg-emerald-50 focus:text-emerald-700 transition-colors"
+                    >
+                      <Link
+                        to="/orders"
+                        className="w-full px-2 font-medium text-sm text-stone-600"
+                      >
+                        My Orders
+                      </Link>
+                    </DropdownMenuItem>
+
+                    {/* ✅ بدل Medical Care صار My Appointments */}
+                    <DropdownMenuItem
+                      asChild
+                      className="rounded-xl cursor-pointer py-2.5 focus:bg-indigo-50 focus:text-indigo-700 transition-colors"
+                    >
+                      <Link
+                        to="/my-appointments"
+                        className="w-full px-2 font-medium text-sm text-stone-600"
+                      >
+                        My Appointments
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      asChild
+                      className="rounded-xl cursor-pointer py-2.5 focus:bg-rose-50 focus:text-rose-700 transition-colors"
+                    >
+                      <Link
+                        to="/adoption-requests"
+                        className="w-full px-2 font-medium text-sm text-stone-600"
+                      >
+                        My Adoptions
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      asChild
+                      className="rounded-xl cursor-pointer py-2.5 focus:bg-amber-50 focus:text-amber-700 transition-colors"
+                    >
+                      <Link
+                        to="/my-boarding-reservations"
+                        className="w-full px-2 font-medium text-sm text-stone-600"
+                      >
+                        My Boarding
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="bg-stone-100" />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="rounded-xl cursor-pointer py-2.5 text-red-500 focus:bg-red-50 focus:text-red-600 font-medium text-sm"
+                    >
+                      <span className="px-2">
+                        {isLoggingOut ? "Processing..." : "Sign Out"}
+                      </span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
             ) : (
-              <div className="flex gap-2">
-                <Button asChild variant="outline" className={loginBtnClass}><Link to="/login">Login</Link></Button>
-                <Button asChild className={registerBtnClass}><Link to="/register">Register</Link></Button>
+              <div className="hidden md:flex gap-2">
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="text-[13px] font-medium text-stone-600 rounded-xl px-4"
+                >
+                  <Link to="/login">Login</Link>
+                </Button>
+                <Button
+                  asChild
+                  className="bg-[#3C7A57] hover:bg-[#2d5d42] text-white text-[13px] font-bold rounded-xl px-6 transition-all active:scale-95 shadow-lg shadow-[#3C7A57]/20"
+                >
+                  <Link to="/register">Register</Link>
+                </Button>
               </div>
             )}
-          </div>
 
-          {/* Mobile Menu */}
-          <div className="flex items-center gap-2 md:hidden">
+            {/* Mobile Toggle */}
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" className={iconBtnBase}><Menu className="h-[18px] w-[18px]" /></Button>
+                <Button
+                  variant="ghost"
+                  className="h-10 w-10 p-0 md:hidden flex items-center justify-center hover:bg-stone-100/50 rounded-xl"
+                >
+                  <Menu className="h-6 w-6 text-[#2F2A24]" />
+                </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="bg-[#FBF7F1]">
-                <div className="flex items-center gap-2 mt-4">
-                   <img src="/pethub-logo (2).png" alt="Logo" className="h-8 w-8" />
-                   <span className="font-bold">Pet Hub</span>
+
+              <SheetContent side="right" className="bg-[#FDFCFB] border-l-[#E7DCD0] w-72">
+                <div className="flex items-center gap-2 mt-4 mb-10">
+                  <img src="/pethub-logo (2).png" alt="Logo" className="h-9 w-auto" />
+                  <span className="font-black text-xl tracking-tighter">Pet Hub</span>
                 </div>
-                <Separator className="my-4" />
-                <nav className="grid gap-1">
+
+                <nav className="flex flex-col gap-2">
                   {navItems.map((it) => (
-                    <NavLink key={it.to} to={it.to} className={({ isActive }) => [linkBase, isActive ? linkActive : linkInactive].join(" ")}>
+                    <NavLink
+                      key={it.to}
+                      to={it.to}
+                      className={({ isActive }) =>
+                        `flex items-center px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+                          isActive
+                            ? "bg-[#3C7A57] text-white shadow-md shadow-[#3C7A57]/20"
+                            : "text-stone-600 hover:bg-stone-100"
+                        }`
+                      }
+                    >
                       {it.label}
                     </NavLink>
                   ))}
-                  {isAuthed && (
-                    <>
-                      <div className="text-[10px] font-bold text-slate-400 px-3 mt-4 mb-1 uppercase">Account</div>
-                      <NavLink to="/cart" className={linkInactive + " flex items-center gap-2"}><ShoppingBag className="h-4 w-4" /> Cart</NavLink>
-                      <NavLink to="/orders" className={linkInactive + " flex items-center gap-2"}><ClipboardList className="h-4 w-4" /> Orders</NavLink>
-                      <button 
-                        onClick={handleLogout}
-                        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 w-full text-left"
-                      >
-                        <LogOut className="h-4 w-4" /> Logout
-                      </button>
-                    </>
-                  )}
                 </nav>
-                {!isAuthed && (
-                  <div className="grid grid-cols-2 gap-2 mt-6">
-                    <Button asChild variant="outline" className={loginBtnClass}><Link to="/login">Login</Link></Button>
-                    <Button asChild className={registerBtnClass}><Link to="/register">Register</Link></Button>
-                  </div>
-                )}
               </SheetContent>
             </Sheet>
           </div>

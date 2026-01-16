@@ -5,7 +5,8 @@ import Navbar from "@/components/common/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-import Cookies from "js-cookie";
+// ✅ نفس توكن الموقع
+import { getToken } from "@/app/apiSlice";
 
 import {
   X,
@@ -122,11 +123,11 @@ export default function PetDetailsPage() {
     ? "w-full max-w-5xl h-[86vh] rounded-[26px] bg-white shadow-2xl overflow-hidden"
     : "w-full max-w-6xl rounded-[26px] bg-white shadow-2xl overflow-hidden mx-auto";
 
-  // ✅ زر التبنّي
+  // ✅ زر التبنّي (Fix token مثل الشوب)
   const onAdoptClick = () => {
     if (!adoptable) return;
 
-    const token = Cookies.get("token");
+    const token = getToken(); // ✅ بدل Cookies.get("token")
     if (!token) {
       openAuthDialog();
       return;
@@ -320,17 +321,17 @@ export default function PetDetailsPage() {
               <div className="flex flex-col gap-3">
                 <div className="relative rounded-[20px] overflow-hidden bg-white border border-[#E7DCD0]">
                   <div className="relative w-full h-[260px] sm:h-[320px] md:h-[360px] lg:h-[420px] bg-[#FBF7F1] overflow-hidden">
-                    {currentImg ? (
+                    {images.length ? (
                       <>
                         <img
-                          src={currentImg}
+                          src={images[Math.min(active, images.length - 1)]}
                           alt=""
                           className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl opacity-35"
                           draggable="false"
                           aria-hidden="true"
                         />
                         <img
-                          src={currentImg}
+                          src={images[Math.min(active, images.length - 1)]}
                           alt={name || `#${pet?.id}`}
                           className="absolute inset-0 h-full w-full object-contain"
                           draggable="false"

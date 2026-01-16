@@ -1,3 +1,4 @@
+// src/app/router.jsx
 import React from "react";
 import { useLocation, useRoutes } from "react-router-dom";
 
@@ -23,6 +24,13 @@ import BoardingPage from "@/pages/BoardingPage";
 import MyBoardingReservationsPage from "@/pages/MyBoardingReservationsPage";
 import BoardingReservationDetailsPage from "@/pages/BoardingReservationDetailsPage";
 
+// ✅ Appointments (User)
+import MyAppointmentsPage from "@/pages/MyAppointmentsPage";
+import MyAppointmentDetailsPage from "@/pages/MyAppointmentDetailsPage";
+
+// ✅ NEW: Medical Care landing page (Overview + Book dialog)
+import MedicalCarePage from "@/pages/MedicalCarePage";
+
 const routes = [
   {
     path: "/",
@@ -45,6 +53,13 @@ const routes = [
       { path: "boarding", element: <BoardingPage /> },
       { path: "my-boarding-reservations", element: <MyBoardingReservationsPage /> },
       { path: "my-boarding-reservations/:id", element: <BoardingReservationDetailsPage /> },
+
+      // ✅ Medical Care (Overview + Book)
+      { path: "medical-care", element: <MedicalCarePage /> },
+
+      // ✅ My Appointments
+      { path: "my-appointments", element: <MyAppointmentsPage /> },
+      { path: "my-appointments/:id", element: <MyAppointmentDetailsPage /> },
     ],
   },
 

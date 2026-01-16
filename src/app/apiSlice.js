@@ -84,6 +84,9 @@ export const apiSlice = createApi({
     "AdoptionApplication",
     "BoardingReservation",
     "BoardingService",
+    "Notification",
+    "Appointment",
+    "AppointmentCategory",
   ],
   endpoints: () => ({}),
 });

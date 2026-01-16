@@ -1,12 +1,12 @@
 // src/pages/BoardingReservationDetailsPage.jsx
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/common/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Calendar, XCircle } from "lucide-react";
+import { ArrowLeft, Calendar, XCircle, BedDouble } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -21,6 +21,8 @@ import {
   useCancelBoardingReservationMutation,
   useGetMyBoardingReservationQuery,
 } from "@/features/boarding/boardingApiSlice";
+
+const headerPets = ["/cat.jpg", "/bird.jpg", "/h3-cat-pet-container.jpg"];
 
 function useIsArabic() {
   const [isAr, setIsAr] = useState(false);
@@ -52,9 +54,9 @@ function formatDateTime(dt, isAr) {
 function statusBadgeClass(status = "") {
   const s = String(status).toLowerCase();
   if (s.includes("approved") || s.includes("confirmed"))
-    return "bg-emerald-50 text-emerald-700 border-emerald-100";
-  if (s.includes("cancel")) return "bg-red-50 text-red-700 border-red-100";
-  return "bg-orange-50 text-orange-700 border-orange-100";
+    return "bg-emerald-100 text-emerald-900 border-emerald-300";
+  if (s.includes("cancel")) return "bg-red-100 text-red-900 border-red-300";
+  return "bg-orange-100 text-orange-900 border-orange-300";
 }
 
 const serviceLabel = (s, isAr) => {
@@ -66,6 +68,7 @@ export default function BoardingReservationDetailsPage() {
   const isAr = useIsArabic();
   const t = (en, ar) => (isAr ? ar : en);
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const { data, isLoading, refetch } = useGetMyBoardingReservationQuery(id);
   const [cancelReservation, { isLoading: canceling }] =
@@ -90,9 +93,9 @@ export default function BoardingReservationDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
+      <div className="min-h-screen bg-[#F7F3F0]" dir={isAr ? "rtl" : "ltr"}>
         <Navbar />
-        <div className="pt-32 text-center text-[#3C7A57] font-medium animate-pulse">
+        <div className="pt-32 text-center text-[#387365] font-medium animate-pulse">
           {t("Loading...", "جاري التحميل...")}
         </div>
       </div>
@@ -101,123 +104,164 @@ export default function BoardingReservationDetailsPage() {
 
   return (
     <div
-      className="min-h-screen bg-[#FDFCFB] text-[#2F2A24]"
+      className="min-h-screen text-[#2F2A24] bg-[#F7F3F0]"
       dir={isAr ? "rtl" : "ltr"}
     >
       <Navbar />
 
-      <main className="pt-28 pb-20">
-        <div className="mx-auto max-w-4xl px-4">
-          {/* Header */}
-          <header className="mb-7 rounded-xl border border-[#E7DCD0] bg-[#F7F3F0] p-4 sm:p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <Link
-                  to={-1}
-                  className="h-9 w-9 rounded-full bg-white shadow-sm border border-[#E7DCD0] inline-flex items-center justify-center"
-                >
-                  <ArrowLeft size={18} className={isAr ? "rotate-180" : ""} />
-                </Link>
+      {/* خلفية خفيفة لتطلع أفخم */}
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(56,115,101,0.10),transparent_55%),radial-gradient(ellipse_at_bottom,rgba(90,62,43,0.10),transparent_55%)]" />
 
-                <div>
-                  <h1 className="text-xl font-bold tracking-tight">
-                    {t("Reservation Details", "تفاصيل الحجز")} #{r?.id ?? id}
-                  </h1>
-                  <div className="mt-1 flex items-center gap-2 text-[12px] text-slate-500 font-medium">
-                    <Calendar size={13} />
-                    {formatDateTime(r?.created_at, isAr)}
-                  </div>
+      <main className="pt-8 pb-12 px-4 md:px-6">
+        <div className="mx-auto max-w-4xl">
+          {/* Header */}
+          <header className="relative bg-[#387365] p-6 md:p-9 rounded-xl shadow-md overflow-hidden mb-8 border-b-4 border-[#2d5c51]">
+            <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+              <BedDouble className="w-64 h-64 text-white" />
+            </div>
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <button
+                  onClick={() => navigate(-1)}
+                  className="flex items-center gap-2 text-[#a8d5cb] font-semibold hover:text-white transition-colors w-fit group text-xs mb-3"
+                >
+                  <ArrowLeft
+                    className={`w-3.5 h-3.5 transition-transform ${
+                      isAr
+                        ? "rotate-180 group-hover:translate-x-1"
+                        : "group-hover:-translate-x-1"
+                    }`}
+                  />
+                  <span>{t("Back", "الرجوع")}</span>
+                </button>
+
+                <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+                  {t("Reservation Details", "تفاصيل الحجز")}
+                  <span className="text-[#F2EDE7]"> — </span>
+                  <span className="text-[#F2EDE7]">
+                    {t("Order No.", "رقم الطلب")}: {r?.id ?? id}
+                  </span>
+                </h1>
+
+                <div className="mt-2 flex items-center gap-2 text-[12px] text-[#E7DCD0] font-semibold">
+                  <Calendar size={13} />
+                  {formatDateTime(r?.created_at, isAr)}
                 </div>
               </div>
 
-              <Badge
-                className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase ${statusBadgeClass(
-                  r.status
-                )}`}
-              >
-                {r?.status || "pending"}
-              </Badge>
+              {/* صور الهيدر */}
+              <div className="flex items-center gap-4 mt-2 sm:mt-0">
+                <div className="hidden lg:flex -space-x-3">
+                  {headerPets.map((url, i) => (
+                    <img
+                      key={i}
+                      src={url}
+                      className="w-12 h-12 rounded-full border-2 border-white shadow-xl object-cover"
+                      alt="pet"
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </header>
 
-          {/* Content */}
-          <Card className="rounded-xl border-[#E7DCD0]/70 bg-white shadow-sm">
-            <CardContent className="p-4 sm:p-5">
+          {/* Content Card */}
+          <Card className="rounded-xl bg-[#F2EDE7] border-2 border-[#D1C2B4] shadow-sm overflow-hidden">
+            <CardContent className="p-5">
+              {/* ✅ Status صغير ومرتب (مو عريض) */}
+              <div
+                className={`mb-3 flex items-center gap-2 ${
+                  isAr ? "justify-start" : "justify-end"
+                }`}
+              >
+                <span className="text-[11px] font-extrabold text-[#5A3E2B]">
+                  {t("Status", "الحالة")}:
+                </span>
+                <Badge
+                  className={`rounded-full border-2 px-3 py-1 text-[10px] font-bold uppercase shadow-sm ${statusBadgeClass(
+                    r.status
+                  )}`}
+                >
+                  {r?.status || "pending"}
+                </Badge>
+              </div>
+
               {/* Top fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">
+                <div className="rounded-xl border-2 border-[#D1C2B4] bg-white/60 p-4">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-[#7A6F66] mb-1">
                     {t("Start", "البداية")}
                   </div>
-                  <div className="text-sm font-bold text-slate-800">
+                  <div className="text-sm font-bold text-[#2F2A24]">
                     {formatDateTime(r?.start_at, isAr) || "—"}
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">
+                <div className="rounded-xl border-2 border-[#D1C2B4] bg-white/60 p-4">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-[#7A6F66] mb-1">
                     {t("End", "النهاية")}
                   </div>
-                  <div className="text-sm font-bold text-slate-800">
+                  <div className="text-sm font-bold text-[#2F2A24]">
                     {formatDateTime(r?.end_at, isAr) || "—"}
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">
+                <div className="rounded-xl border-2 border-[#D1C2B4] bg-white/60 p-4">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-[#7A6F66] mb-1">
                     {t("Billable Hours", "الساعات المحتسبة")}
                   </div>
-                  <div className="text-sm font-bold text-slate-800">
+                  <div className="text-sm font-bold text-[#2F2A24]">
                     {r?.billable_hours ?? "—"}
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">
+                <div className="rounded-xl border-2 border-[#D1C2B4] bg-white/60 p-4">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-[#7A6F66] mb-1">
                     {t("Total", "الإجمالي")}
                   </div>
-                  <div className="text-sm font-bold text-[#3C7A57]">
+                  <div className="text-sm font-extrabold text-[#5A3E2B]">
                     {r?.total != null ? money(r.total) : "—"}
                   </div>
                 </div>
               </div>
 
-              <Separator className="my-4" />
+              <Separator className="my-5 bg-[#D1C2B4]" />
 
-             {/* Services */}
-<div className="text-sm font-bold text-[#2F2A24] mb-2 text-center">
-  {t("Services", "الخدمات")}
-</div>
+              {/* Services */}
+              <div className="text-sm font-extrabold text-[#5A3E2B] mb-3 text-center">
+                {t("Services", "الخدمات")}
+              </div>
 
-{!services.length ? (
-  <div className="text-sm text-slate-500 text-center">
-    {t("No services.", "لا يوجد خدمات.")}
-  </div>
-) : (
-  <div className="space-y-2 text-left">
-    {services.map((s) => (
-      <div
-        key={s.id}
-        className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left"
-      >
-        <div className="text-sm font-bold text-slate-800 truncate">
-          {serviceLabel(s, isAr)}
-        </div>
-        <div className="text-[12px] text-slate-500 font-medium mt-0.5">
-          {money(s?.price)}
-        </div>
-      </div>
-    ))}
-  </div>
-)}
+              {!services.length ? (
+                <div className="text-sm text-[#7A6F66] text-center">
+                  {t("No services.", "لا يوجد خدمات.")}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {services.map((s) => (
+                    <div
+                      key={s.id}
+                      className="rounded-xl border-2 border-[#D1C2B4] bg-white/60 px-4 py-3"
+                    >
+                      <div className="text-sm font-bold text-[#2F2A24] truncate">
+                        {serviceLabel(s, isAr)}
+                      </div>
+                      <div className="text-[12px] text-[#7A6F66] font-semibold mt-0.5">
+                        {money(s?.price)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Actions */}
-              <div className="mt-5 flex flex-col sm:flex-row gap-2 justify-end">
+              <div className="mt-6 flex flex-col sm:flex-row gap-2 justify-end">
                 {canCancel ? (
                   <Button
                     onClick={() => setConfirmOpen(true)}
                     variant="outline"
-                    className="h-11 rounded-xl border-red-200 bg-white text-red-600 font-bold hover:bg-red-50"
+                    className="h-11 rounded-xl border-2 border-red-200 bg-white/70 text-red-700 font-bold hover:bg-red-50"
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     {t("Cancel Reservation", "إلغاء الحجز")}
@@ -226,7 +270,7 @@ export default function BoardingReservationDetailsPage() {
 
                 <Button
                   asChild
-                  className="h-11 rounded-xl bg-[#3C7A57] hover:bg-[#336A4C] text-white font-bold"
+                  className="h-11 rounded-xl bg-[#387365] hover:bg-[#2d5c51] text-white font-bold"
                 >
                   <Link to="/my-boarding-reservations">
                     {t("Back to list", "رجوع للقائمة")}
@@ -240,12 +284,12 @@ export default function BoardingReservationDetailsPage() {
 
       {/* Confirm cancel */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="z-[200] rounded-[24px] max-w-sm p-6 overflow-hidden border border-[#E7DCD0] shadow-2xl bg-white">
+        <DialogContent className="z-[200] rounded-[24px] max-w-sm p-6 overflow-hidden border-2 border-[#D1C2B4] shadow-2xl bg-[#FDFCFB]">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-[#2F2A24]">
               {t("Confirm cancel", "تأكيد الإلغاء")}
             </DialogTitle>
-            <DialogDescription className="text-slate-500 text-sm">
+            <DialogDescription className="text-[#7A6F66] text-sm">
               {t(
                 "Are you sure you want to cancel this reservation?",
                 "هل أنت متأكد أنك تريد إلغاء هذا الحجز؟"
@@ -257,7 +301,7 @@ export default function BoardingReservationDetailsPage() {
             <Button
               variant="ghost"
               onClick={() => setConfirmOpen(false)}
-              className="h-10 rounded-xl text-slate-500 hover:bg-slate-50"
+              className="h-10 rounded-xl text-[#7A6F66] hover:bg-[#F2EDE7]"
             >
               {t("Back", "رجوع")}
             </Button>
@@ -266,7 +310,9 @@ export default function BoardingReservationDetailsPage() {
               disabled={canceling}
               className="h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold"
             >
-              {canceling ? t("Canceling...", "جاري الإلغاء...") : t("Yes, cancel", "نعم، إلغاء")}
+              {canceling
+                ? t("Canceling...", "جاري الإلغاء...")
+                : t("Yes, cancel", "نعم، إلغاء")}
             </Button>
           </div>
         </DialogContent>

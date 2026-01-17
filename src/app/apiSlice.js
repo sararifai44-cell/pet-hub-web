@@ -36,7 +36,6 @@ export const setToken = (token, { remember = false } = {}) => {
 export const clearToken = () => {
   Cookies.remove(WEB_TOKEN_KEY, { path: "/" });
 
-  // ✅ تنظيف مفاتيح قديمة لتجنب أي خربطة/كود قديم
   for (const k of LEGACY_KEYS) {
     Cookies.remove(k, { path: "/" });
   }

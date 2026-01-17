@@ -4,8 +4,6 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import Navbar from "@/components/common/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-// ✅ نفس توكن الموقع
 import { getToken } from "@/app/apiSlice";
 
 import {
@@ -17,11 +15,11 @@ import {
   VenusAndMars,
   PawPrint,
   Sparkles,
+  Info
 } from "lucide-react";
 
 import { useGetPetByIdQuery } from "@/features/pets/petsApiSlice";
 
-// ✅ Dialog (shadcn/ui)
 import {
   Dialog,
   DialogContent,
@@ -29,6 +27,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogOverlay,
 } from "@/components/ui/dialog";
 
 function useIsArabic() {
@@ -72,31 +71,23 @@ export default function PetDetailsPage() {
     else navigate("/pets");
   };
 
-  // ===================== ✅ AUTH DIALOG =====================
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authFrom, setAuthFrom] = useState("");
 
   const openAuthDialog = useCallback(() => {
-    // الهدف بعد تسجيل الدخول: صفحة طلب التبني
     setAuthFrom(`/pets/${id}/apply`);
     setAuthDialogOpen(true);
   }, [id]);
-  // ==========================================================
 
   const images = useMemo(() => {
     const list = [];
     if (pet?.cover_image) list.push(pet.cover_image);
-
     if (Array.isArray(pet?.images)) {
-      for (const it of pet.images) {
-        if (typeof it === "string" && it) list.push(it);
-        else if (it && typeof it === "object") {
-          const u = it.url || it.path || it.image || it.image_url;
-          if (u) list.push(u);
-        }
-      }
+      pet.images.forEach(it => {
+        const u = typeof it === "string" ? it : (it?.url || it?.path || it?.image || it?.image_url);
+        if (u) list.push(u);
+      });
     }
-
     return Array.from(new Set(list)).filter(Boolean);
   }, [pet]);
 
@@ -109,70 +100,23 @@ export default function PetDetailsPage() {
   const dobText = formatDob(dob, isAr);
   const adoptable = pet?.is_adoptable === true;
 
-  const currentImg = images.length ? images[Math.min(active, images.length - 1)] : null;
   const canSlide = images.length > 1;
+  const goPrev = (e) => { e.stopPropagation(); setActive((i) => (i - 1 + images.length) % images.length); };
+  const goNext = (e) => { e.stopPropagation(); setActive((i) => (i + 1) % images.length); };
 
-  const goPrev = () => setActive((i) => (i - 1 + images.length) % images.length);
-  const goNext = () => setActive((i) => (i + 1) % images.length);
-
-  const shellClass = isModal
-    ? "fixed inset-0 z-50 grid place-items-center bg-black/35 backdrop-blur-md p-3 sm:p-5"
-    : "pt-28 pb-20 px-6";
-
-  const cardClass = isModal
-    ? "w-full max-w-5xl h-[86vh] rounded-[26px] bg-white shadow-2xl overflow-hidden"
-    : "w-full max-w-6xl rounded-[26px] bg-white shadow-2xl overflow-hidden mx-auto";
-
-  // ✅ زر التبنّي (Fix token مثل الشوب)
   const onAdoptClick = () => {
     if (!adoptable) return;
-
-    const token = getToken(); // ✅ بدل Cookies.get("token")
-    if (!token) {
-      openAuthDialog();
-      return;
-    }
-
+    const token = getToken();
+    if (!token) { openAuthDialog(); return; }
     navigate(`/pets/${id}/apply`);
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FDFCFB] text-[#2F2A24]" dir={isAr ? "rtl" : "ltr"}>
-        {!isModal ? <Navbar /> : null}
-        <main className={shellClass}>
-          <div className="w-full max-w-5xl rounded-[26px] bg-white p-6">
-            <div className="h-6 w-60 rounded-xl bg-black/5 animate-pulse" />
-            <div className="mt-4 h-[380px] rounded-2xl bg-black/5 animate-pulse" />
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (isError || !pet) {
-    const status = error?.status;
-    return (
-      <div className="min-h-screen bg-[#FDFCFB] text-[#2F2A24]" dir={isAr ? "rtl" : "ltr"}>
-        {!isModal ? <Navbar /> : null}
-        <main className={shellClass}>
-          <div className="w-full max-w-xl rounded-[26px] border border-[#E7DCD0] bg-white p-6">
-            <div className="text-xl font-extrabold">{t("Pet not found", "الحيوان غير موجود")}</div>
-            <div className="mt-2 text-sm text-[#2F2A24]/70">
-              {t("This pet doesn’t exist or can’t be loaded.", "هذا الحيوان غير موجود أو ما قدرنا نجيبه.")}
-              {status ? ` (${status})` : null}
-            </div>
-
-            <div className="mt-5 flex gap-2">
-              <Button onClick={close} className="rounded-full bg-[#3C7A57] hover:bg-[#336A4C] text-white">
-                {t("Back", "رجوع")}
-              </Button>
-
-              <Button asChild variant="outline" className="rounded-full border-[#E7DCD0] bg-white hover:bg-[#F5F2F0]">
-                <Link to="/pets">{t("Go to list", "العودة للقائمة")}</Link>
-              </Button>
-            </div>
-          </div>
+      <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
+        {!isModal && <Navbar />}
+        <main className="fixed inset-0 z-50 grid place-items-center bg-black/10 backdrop-blur-sm p-4">
+          <div className="w-full max-w-4xl h-[70vh] rounded-[32px] bg-white animate-pulse" />
         </main>
       </div>
     );
@@ -180,234 +124,203 @@ export default function PetDetailsPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-[#2F2A24]" dir={isAr ? "rtl" : "ltr"}>
-      {!isModal ? <Navbar /> : null}
+      {!isModal && <Navbar />}
 
-      {/* ✅ Dialog: لازم تسجل دخول */}
+      {/* ✅ Auth Dialog Updated */}
       <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle className="text-base font-extrabold">
-              {t("Login required", "تسجيل الدخول مطلوب")}
+        <DialogOverlay className="bg-black/40 backdrop-blur-[2px]" />
+
+        {/* ✅ التعديل الوحيد: إضافة bg-white حتى ما يطلع شفاف */}
+        <DialogContent className="sm:max-w-[400px] rounded-[24px] border-none p-8 bg-white">
+          <div className="flex flex-col items-center text-center">
+            <div className="h-14 w-14 rounded-full bg-[#3C7A57]/10 flex items-center justify-center mb-4">
+              <Info className="h-7 w-7 text-[#3C7A57]" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-[#2F2A24]">
+              {t("Sign in Required", "مطلوب تسجيل الدخول")}
             </DialogTitle>
-            <DialogDescription className="text-sm">
-              {t("You need to login first to continue.", "لازم تسجل دخول أولاً لتكمل.")}
+            <DialogDescription className="mt-2 text-[#5C554E] font-medium leading-relaxed">
+              {t(
+                "To start the adoption process for this pet, please sign in to your account.",
+                "لبدء عملية التبني، يرجى تسجيل الدخول إلى حسابك أولاً."
+              )}
             </DialogDescription>
-          </DialogHeader>
+          </div>
 
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="outline" onClick={() => setAuthDialogOpen(false)} className="rounded-xl">
-              {t("Cancel", "إلغاء")}
-            </Button>
-
+          <div className="mt-8 flex flex-col gap-3">
             <Button
               onClick={() => {
                 setAuthDialogOpen(false);
-                navigate("/login", { replace: true, state: { from: authFrom } });
+                navigate("/login", { state: { from: authFrom } });
               }}
-              className="rounded-xl bg-[#3C7A57] hover:bg-[#336A4C] text-white"
+              className="h-12 w-full rounded-xl bg-[#3C7A57] hover:bg-[#336A4C] text-white font-bold text-sm shadow-lg shadow-[#3C7A57]/20"
             >
-              {t("Go to Login", "تسجيل الدخول")}
+              {t("Continue to Login", "المتابعة لتسجيل الدخول")}
             </Button>
-          </DialogFooter>
+
+            <Button
+              variant="ghost"
+              onClick={() => setAuthDialogOpen(false)}
+              className="h-12 w-full rounded-xl text-[#5C554E] font-bold"
+            >
+              {t("Maybe Later", "ليس الآن")}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
-      <main className={shellClass} onClick={isModal ? close : undefined}>
-        <div className={cardClass} onClick={isModal ? (e) => e.stopPropagation() : undefined}>
-          {/* top bar */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#E7DCD0] bg-white">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="text-sm font-extrabold truncate">{name || `#${pet?.id}`}</div>
+      <main
+        className={
+          isModal
+            ? "fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4 sm:p-6"
+            : "pt-28 pb-20 px-6"
+        }
+        onClick={isModal ? close : undefined}
+      >
+        <div
+          className={
+            isModal
+              ? "w-full max-w-5xl h-[90vh] lg:h-[85vh] rounded-[32px] bg-white shadow-2xl overflow-hidden flex flex-col relative"
+              : "w-full max-w-6xl rounded-[32px] bg-white shadow-2xl overflow-hidden mx-auto flex flex-col lg:flex-row lg:h-[700px]"
+          }
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close Button Mobile/Modal */}
+          <button
+            onClick={close}
+            className="absolute top-4 right-4 z-20 h-10 w-10 rounded-full bg-white/80 backdrop-blur-md shadow-sm border border-black/5 flex items-center justify-center hover:bg-white transition-all"
+          >
+            <X className="h-5 w-5" />
+          </button>
 
-              {typeName ? (
-                <Badge className="rounded-full bg-[#3C7A57]/10 text-[#3C7A57] border-none">
-                  <span className="inline-flex items-center gap-1">
-                    <PawPrint className="h-3.5 w-3.5" />
-                    {typeName}
-                  </span>
-                </Badge>
-              ) : null}
+          <div className="flex flex-col lg:flex-row h-full">
+            {/* Right: Images Section (Slider) */}
+            <div className="w-full lg:w-[55%] h-[45%] lg:h-full bg-[#FBF7F1] relative group border-b lg:border-b-0 lg:border-r border-[#E7DCD0]">
+              {images.length > 0 ? (
+                <div className="relative h-full w-full overflow-hidden">
+                  <img
+                    src={images[active]}
+                    alt={name}
+                    className="h-full w-full object-cover transition-transform duration-700 ease-out"
+                  />
 
-              {breedName ? (
-                <Badge className="rounded-full bg-[#2F2A24]/5 text-[#2F2A24]/70 border-none">
-                  <span className="inline-flex items-center gap-1">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    {breedName}
-                  </span>
-                </Badge>
-              ) : null}
-            </div>
-
-            <button
-              type="button"
-              onClick={close}
-              className="h-9 w-9 rounded-full grid place-items-center hover:bg-black/5"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* body */}
-          <div className="grid lg:grid-cols-[1fr_1.1fr] h-[calc(86vh-52px)]">
-            {/* left info */}
-            <div className="p-5 lg:p-6 overflow-y-auto">
-              <div className="text-2xl font-extrabold text-center">{name || `#${pet?.id}`}</div>
-
-              <div className="mt-2 flex flex-wrap gap-2 justify-center">
-                {adoptable ? (
-                  <Badge className="rounded-full bg-[#3C7A57]/10 text-[#3C7A57] border-none">
-                    {t("Available for adoption", "متاح للتبني")}
-                  </Badge>
-                ) : (
-                  <Badge className="rounded-full bg-[#2F2A24]/5 text-[#2F2A24]/70 border-none">
-                    {t("Not available for adoption", "غير متاح للتبني")}
-                  </Badge>
-                )}
-              </div>
-
-              {description ? (
-                <div className="mt-3 text-sm text-[#2F2A24]/70 leading-relaxed text-center">{description}</div>
-              ) : (
-                <div className="mt-3 text-sm text-[#2F2A24]/50 text-center">
-                  {t("No description.", "لا يوجد وصف.")}
-                </div>
-              )}
-
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                {gender ? (
-                  <div className="rounded-2xl border border-[#E7DCD0] p-4 bg-white">
-                    <div className="text-xs font-bold text-[#2F2A24]/60 flex items-center gap-2">
-                      <VenusAndMars className="h-4 w-4 text-[#3C7A57]" />
-                      {t("Gender", "الجنس")}
-                    </div>
-                    <div className="mt-1 text-sm font-extrabold">{gender}</div>
-                  </div>
-                ) : null}
-
-                {dob ? (
-                  <div className="rounded-2xl border border-[#E7DCD0] p-4 bg-white">
-                    <div className="text-xs font-bold text-[#2F2A24]/60 flex items-center gap-2">
-                      <CalendarDays className="h-4 w-4 text-[#3C7A57]" />
-                      {t("Date of birth", "تاريخ الميلاد")}
-                    </div>
-                    <div className="mt-1 text-sm font-extrabold">{dobText}</div>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="mt-6 flex gap-2">
-                <Button
-                  className="flex-1 h-11 rounded-full bg-[#3C7A57] text-white hover:bg-[#336A4C]"
-                  disabled={!adoptable}
-                  onClick={onAdoptClick}
-                >
-                  <HeartHandshake className="h-4 w-4" />
-                  <span className={isAr ? "mr-2" : "ml-2"}>{t("Adopt", "تبنّي")}</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="h-11 rounded-full border-[#E7DCD0] bg-white hover:bg-[#F5F2F0] px-5"
-                  onClick={close}
-                >
-                  {t("Close", "إغلاق")}
-                </Button>
-              </div>
-            </div>
-
-            {/* right slider */}
-            <div className="bg-[#FBF7F1] border-t lg:border-t-0 lg:border-l border-[#E7DCD0] p-4 lg:p-5 overflow-y-auto">
-              <div className="flex flex-col gap-3">
-                <div className="relative rounded-[20px] overflow-hidden bg-white border border-[#E7DCD0]">
-                  <div className="relative w-full h-[260px] sm:h-[320px] md:h-[360px] lg:h-[420px] bg-[#FBF7F1] overflow-hidden">
-                    {images.length ? (
-                      <>
-                        <img
-                          src={images[Math.min(active, images.length - 1)]}
-                          alt=""
-                          className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl opacity-35"
-                          draggable="false"
-                          aria-hidden="true"
-                        />
-                        <img
-                          src={images[Math.min(active, images.length - 1)]}
-                          alt={name || `#${pet?.id}`}
-                          className="absolute inset-0 h-full w-full object-contain"
-                          draggable="false"
-                          loading="eager"
-                          decoding="async"
-                          onError={(e) => (e.currentTarget.style.display = "none")}
-                        />
-                      </>
-                    ) : (
-                      <div className="h-full w-full grid place-items-center text-sm font-extrabold text-[#2F2A24]/40">
-                        {t("No image from API", "لا يوجد صورة من الباك")}
-                      </div>
-                    )}
-                  </div>
-
-                  {canSlide ? (
+                  {canSlide && (
                     <>
                       <button
-                        type="button"
                         onClick={goPrev}
-                        className={`absolute top-1/2 -translate-y-1/2 ${
-                          isAr ? "right-3" : "left-3"
-                        } h-10 w-10 rounded-full bg-white/90 border border-[#E7DCD0] grid place-items-center hover:bg-white`}
-                        aria-label="prev"
+                        className={`absolute top-1/2 -translate-y-1/2 ${isAr ? 'right-4' : 'left-4'} h-11 w-11 rounded-full bg-white/90 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white`}
                       >
-                        <ChevronLeft className="h-5 w-5" />
+                        <ChevronLeft className="h-6 w-6" />
                       </button>
-
                       <button
-                        type="button"
                         onClick={goNext}
-                        className={`absolute top-1/2 -translate-y-1/2 ${
-                          isAr ? "left-3" : "right-3"
-                        } h-10 w-10 rounded-full bg-white/90 border border-[#E7DCD0] grid place-items-center hover:bg-white`}
-                        aria-label="next"
+                        className={`absolute top-1/2 -translate-y-1/2 ${isAr ? 'left-4' : 'right-4'} h-11 w-11 rounded-full bg-white/90 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white`}
                       >
-                        <ChevronRight className="h-5 w-5" />
+                        <ChevronRight className="h-6 w-6" />
                       </button>
 
-                      <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
+                      {/* Indicators */}
+                      <div className="absolute bottom-6 inset-x-0 flex justify-center gap-2">
                         {images.map((_, idx) => (
                           <button
                             key={idx}
-                            type="button"
                             onClick={() => setActive(idx)}
-                            className={`h-2.5 w-2.5 rounded-full border border-white/70 ${
-                              idx === active ? "bg-[#3C7A57]" : "bg-black/20"
-                            }`}
-                            aria-label={`go-${idx}`}
+                            className={`h-1.5 transition-all duration-300 rounded-full ${idx === active ? "w-8 bg-[#3C7A57]" : "w-2 bg-white/60 hover:bg-white"}`}
                           />
                         ))}
                       </div>
                     </>
-                  ) : null}
+                  )}
+                </div>
+              ) : (
+                <div className="h-full grid place-items-center text-[#2F2A24]/30 font-bold">
+                  {t("No Images", "لا توجد صور")}
+                </div>
+              )}
+            </div>
+
+            {/* Left: Info Section */}
+            <div className="w-full lg:w-[45%] h-[55%] lg:h-full p-6 lg:p-10 flex flex-col overflow-y-auto">
+              <div className="flex flex-wrap gap-2 mb-4">
+                {typeName && (
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-[#3C7A57]/20 bg-[#3C7A57]/5 text-[#3C7A57] font-bold px-3 py-1"
+                  >
+                    <PawPrint className="h-3 w-3 mr-1.5 inline" /> {typeName}
+                  </Badge>
+                )}
+                {breedName && (
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-[#E7DCD0] bg-[#FBF7F1] text-[#5C554E] font-bold px-3 py-1"
+                  >
+                    <Sparkles className="h-3 w-3 mr-1.5 inline" /> {breedName}
+                  </Badge>
+                )}
+              </div>
+
+              <h1 className="text-3xl lg:text-4xl font-bold text-[#2F2A24] tracking-tight">
+                {name || "Unnamed"}
+              </h1>
+
+              <div className="mt-4 flex items-center gap-2">
+                <div className={`h-2.5 w-2.5 rounded-full ${adoptable ? "bg-emerald-500" : "bg-gray-300"}`} />
+                <span className="text-sm font-bold text-[#5C554E]">
+                  {adoptable ? t("Ready for Adoption", "جاهز للتبني") : t("Currently Unavailable", "غير متاح حالياً")}
+                </span>
+              </div>
+
+              <div className="mt-8 grid grid-cols-2 gap-4">
+                <div className="bg-[#FBF7F1] rounded-2xl p-4 border border-[#E7DCD0]/50">
+                  <div className="flex items-center gap-2 text-[#5C554E] mb-1">
+                    <VenusAndMars className="h-4 w-4 text-[#3C7A57]" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider">
+                      {t("Gender", "الجنس")}
+                    </span>
+                  </div>
+                  <div className="text-sm font-bold text-[#2F2A24]">{gender || "—"}</div>
                 </div>
 
-                {images.length > 1 ? (
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {images.map((src, i) => (
-                      <button
-                        key={`${src}-${i}`}
-                        type="button"
-                        onClick={() => setActive(i)}
-                        className={[
-                          "h-16 w-20 shrink-0 overflow-hidden rounded-2xl border bg-white",
-                          i === active
-                            ? "border-[#3C7A57] ring-2 ring-[#3C7A57]/15"
-                            : "border-[#E7DCD0] hover:border-[#3C7A57]/40",
-                        ].join(" ")}
-                        aria-label={`thumb-${i}`}
-                      >
-                        <img src={src} alt="" className="h-full w-full object-cover" draggable="false" loading="lazy" />
-                      </button>
-                    ))}
+                <div className="bg-[#FBF7F1] rounded-2xl p-4 border border-[#E7DCD0]/50">
+                  <div className="flex items-center gap-2 text-[#5C554E] mb-1">
+                    <CalendarDays className="h-4 w-4 text-[#3C7A57]" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider">
+                      {t("Birthday", "تاريخ الميلاد")}
+                    </span>
                   </div>
-                ) : null}
+                  <div className="text-sm font-bold text-[#2F2A24]">{dobText || "—"}</div>
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-[#5C554E]/60 mb-3">
+                  {t("About Me", "نبذة عني")}
+                </h3>
+                <p className="text-[#5C554E] text-sm leading-relaxed font-medium">
+                  {description || t("No description available for this pet.", "لا يوجد وصف متاح لهذا الحيوان.")}
+                </p>
+              </div>
+
+              <div className="mt-auto pt-10 flex flex-col sm:flex-row gap-3">
+                <Button
+                  onClick={onAdoptClick}
+                  disabled={!adoptable}
+                  className="flex-1 h-14 rounded-2xl bg-[#3C7A57] text-white hover:bg-[#336A4C] font-bold shadow-lg shadow-[#3C7A57]/20 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                >
+                  <HeartHandshake className="h-5 w-5 mr-2" />
+                  {t("Adopt Me", "تبنّي الآن")}
+                </Button>
+
+                {!isModal && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="h-14 px-8 rounded-2xl border-[#E7DCD0] font-bold text-[#5C554E]"
+                  >
+                    <Link to="/pets">{t("Back to Gallery", "العودة للمعرض")}</Link>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -416,3 +329,4 @@ export default function PetDetailsPage() {
     </div>
   );
 }
+  

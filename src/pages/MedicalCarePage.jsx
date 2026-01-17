@@ -100,7 +100,7 @@ export default function MedicalCarePage() {
 
   const [form, setForm] = useState({
     pet_type_id: "",
-    pet_breed_id: "",
+    pet_breed_id: "",  // breed is now optional
     appointment_category_id: "",
     appointment_date: "",
     notes: "",
@@ -129,7 +129,7 @@ export default function MedicalCarePage() {
       await createAppointment({
         ...form,
         pet_type_id: Number(form.pet_type_id),
-        pet_breed_id: form.pet_breed_id ? Number(form.pet_breed_id) : null,
+        pet_breed_id: form.pet_breed_id ? Number(form.pet_breed_id) : null,  // Send breed only if it's selected
         appointment_category_id: Number(form.appointment_category_id),
       }).unwrap();
       toast.success("Appointment booked successfully!");
@@ -147,7 +147,6 @@ export default function MedicalCarePage() {
       {/* pb-16 تعطي مسافة فاصلة متوازنة (64px) بين آخر محتوى والفوتر */}
       <main className="pt-6 pb-16 px-4 md:px-8">
         <div className="max-w-7xl mx-auto space-y-6">
-          
           <div className="relative bg-[#387365] p-6 md:p-8 rounded-2xl shadow-lg flex flex-col md:flex-row md:items-center justify-between overflow-hidden min-h-[140px]">
             <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
                 <Stethoscope className="w-64 h-64 text-white" />
@@ -233,9 +232,7 @@ export default function MedicalCarePage() {
                 {sliderImages.map((step, index) => (
                   <div
                     key={index}
-                    className={`absolute inset-0 transition-all duration-1000 ease-in-out transform ${
-                      index === activeStep ? "opacity-100 scale-100" : "opacity-0 scale-105"
-                    }`}
+                    className={`absolute inset-0 transition-all duration-1000 ease-in-out transform ${index === activeStep ? "opacity-100 scale-100" : "opacity-0 scale-105"}`}
                   >
                     <img src={step.imgPath} alt={step.label} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-8 md:p-12 text-white">

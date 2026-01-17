@@ -1,420 +1,154 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "@/components/common/Navbar";
 import {
   ArrowLeft,
   Calendar,
-  Info,
-  CheckCircle2,
   Clock,
-  AlertCircle,
   MessageSquare,
-  Heart,
+  HeartHandshake,
+  UserRound,
+  CheckCircle2,
+  XCircle,
+  Trash2
 } from "lucide-react";
-
-import { useGetMyAdoptionApplicationByIdQuery } from "@/features/adoptionApplications/adoptionApplicationsApiSlice";
-
-// ✅ نفس توكن الموقع (pethub_web_token)
+import { Badge } from "@/components/ui/badge";
+import { 
+  useGetMyAdoptionApplicationByIdQuery,
+  useCancelAdoptionApplicationMutation 
+} from "@/features/adoptionApplications/adoptionApplicationsApiSlice";
 import { getToken } from "@/app/apiSlice";
-
-// ✅ Dialog (shadcn/ui)
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogOverlay } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-function useIsArabic() {
-  const lang =
-    typeof window !== "undefined" ? (navigator.language || "").toLowerCase() : "en";
-  return lang.startsWith("ar");
+function formatDate(dt, withTime = false) {
+  if (!dt) return "";
+  try {
+    const d = new Date(dt);
+    return d.toLocaleString("en-US", withTime ? { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" } : { year: "numeric", month: "short", day: "2-digit" });
+  } catch { return ""; }
+}
+
+function calcAgeYears(dateOfBirth) {
+  if (!dateOfBirth) return "Not specified";
+  try {
+    const dob = new Date(dateOfBirth);
+    const now = new Date();
+    let years = now.getFullYear() - dob.getFullYear();
+    if (now.getMonth() < dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate())) years--;
+    return `${Math.max(0, years)} years`;
+  } catch { return "Not specified"; }
 }
 
 export default function AdoptionRequestDetailsPage() {
-  const isAr = useIsArabic();
-  const t = (en, ar) => (isAr ? ar : en);
-
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // ✅ اقرأ التوكن بالطريقة الصحيحة مثل apiSlice
   const token = getToken();
 
-  // ===================== ✅ AUTH DIALOG (مثل الشوب) =====================
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
-  const [authFrom, setAuthFrom] = useState("");
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
-  const isAuthError = (err) => {
-    const status = err?.status ?? err?.originalStatus;
-    const msg = err?.data?.message ?? err?.data?.error ?? err?.error ?? "";
-    return (
-      status === 401 ||
-      status === 403 ||
-      /unauthenticated|unauthorized|login/i.test(String(msg))
-    );
-  };
+  const { data: application, isLoading } = useGetMyAdoptionApplicationByIdQuery(id, { skip: !id || !token });
+  const [cancelRequest, { isLoading: isCancelling }] = useCancelAdoptionApplicationMutation();
 
-  const openAuthDialog = useCallback(() => {
-    const from = location?.pathname + (location?.search || "");
-    setAuthFrom(from);
-    setAuthDialogOpen(true);
-  }, [location?.pathname, location?.search]);
-  // =====================================================================
+  useEffect(() => { if (!token) setAuthDialogOpen(true); }, [token]);
 
-  const {
-    data: application,
-    isLoading,
-    isError,
-    error,
-  } = useGetMyAdoptionApplicationByIdQuery(id, {
-    skip: !id || !token, // ✅ لا نضرب API إذا ما في توكن
-    refetchOnMountOrArgChange: true,
-  });
-
-  // ✅ إذا ما في توكن -> افتح الدايلوغ (مرة)
-  useEffect(() => {
-    if (!token) openAuthDialog();
-  }, [token, openAuthDialog]);
-
-  // ✅ إذا رجعت 401/403 -> افتح الدايلوغ مثل الشوب
-  useEffect(() => {
-    if (isAuthError(error)) openAuthDialog();
-  }, [error, openAuthDialog]);
-
-  // ===== Loading =====
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#FDFCFB]">
-        <Navbar />
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="animate-pulse text-[#3C7A57] font-medium">
-            {t("Loading request details...", "جاري تحميل تفاصيل الطلب...")}
-          </div>
-        </div>
-
-        {/* ✅ Dialog */}
-        <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
-          <DialogContent className="sm:max-w-[420px]">
-            <DialogHeader>
-              <DialogTitle className="text-base font-extrabold">
-                {t("Login required", "تسجيل الدخول مطلوب")}
-              </DialogTitle>
-              <DialogDescription className="text-sm">
-                {t("You need to login first to continue.", "لازم تسجل دخول أولاً لتكمل.")}
-              </DialogDescription>
-            </DialogHeader>
-
-            <DialogFooter className="gap-2 sm:gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setAuthDialogOpen(false)}
-                className="rounded-xl"
-              >
-                {t("Cancel", "إلغاء")}
-              </Button>
-
-              <Button
-                onClick={() => {
-                  setAuthDialogOpen(false);
-                  navigate("/login", { state: { from: authFrom }, replace: true });
-                }}
-                className="rounded-xl bg-[#3C7A57] hover:bg-[#336A4C] text-white"
-              >
-                {t("Go to Login", "تسجيل الدخول")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    );
-  }
-
-  // ===== Not logged in =====
-  if (!token) {
-    return (
-      <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
-        <Navbar />
-
-        <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
-          <DialogContent className="sm:max-w-[420px]">
-            <DialogHeader>
-              <DialogTitle className="text-base font-extrabold">
-                {t("Login required", "تسجيل الدخول مطلوب")}
-              </DialogTitle>
-              <DialogDescription className="text-sm">
-                {t(
-                  "You need to login first to view this request.",
-                  "لازم تسجل دخول أولاً لتعرض هذا الطلب."
-                )}
-              </DialogDescription>
-            </DialogHeader>
-
-            <DialogFooter className="gap-2 sm:gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setAuthDialogOpen(false)}
-                className="rounded-xl"
-              >
-                {t("Cancel", "إلغاء")}
-              </Button>
-
-              <Button
-                onClick={() => {
-                  setAuthDialogOpen(false);
-                  navigate("/login", { state: { from: authFrom }, replace: true });
-                }}
-                className="rounded-xl bg-[#3C7A57] hover:bg-[#336A4C] text-white"
-              >
-                {t("Go to Login", "تسجيل الدخول")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <div className="flex flex-col items-center justify-center h-[60vh] gap-3 px-4">
-          <AlertCircle size={44} className="text-amber-400" />
-          <h2 className="text-lg font-extrabold text-[#2F2A24]">
-            {t("Login required", "تسجيل الدخول مطلوب")}
-          </h2>
-          <p className="text-[#2F2A24]/70 text-sm text-center max-w-md">
-            {t("Please login to continue.", "رجاءً سجّل دخول لتكمل.")}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // ===== Error / Not found =====
-  if (isError || !application) {
-    return (
-      <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
-        <Navbar />
-
-        {/* ✅ Dialog فقط إذا Auth error */}
-        <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
-          <DialogContent className="sm:max-w-[420px]">
-            <DialogHeader>
-              <DialogTitle className="text-base font-extrabold">
-                {t("Login required", "تسجيل الدخول مطلوب")}
-              </DialogTitle>
-              <DialogDescription className="text-sm">
-                {t(
-                  "Your session ended. Please login again.",
-                  "انتهت الجلسة. رجاءً سجّل دخول من جديد."
-                )}
-              </DialogDescription>
-            </DialogHeader>
-
-            <DialogFooter className="gap-2 sm:gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setAuthDialogOpen(false)}
-                className="rounded-xl"
-              >
-                {t("Cancel", "إلغاء")}
-              </Button>
-
-              <Button
-                onClick={() => {
-                  setAuthDialogOpen(false);
-                  navigate("/login", { state: { from: authFrom }, replace: true });
-                }}
-                className="rounded-xl bg-[#3C7A57] hover:bg-[#336A4C] text-white"
-              >
-                {t("Go to Login", "تسجيل الدخول")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-          <AlertCircle size={48} className="text-red-400" />
-          <h2 className="text-xl font-bold text-[#2F2A24]">
-            {isAuthError(error)
-              ? t("Unauthorized", "غير مصرح بالدخول")
-              : t("Error", "حدث خطأ")}
-          </h2>
-          <p className="text-[#2F2A24]/70 text-center px-4">
-            {isAuthError(error)
-              ? t("Please login to see this request.", "يرجى تسجيل الدخول لعرض هذا الطلب.")
-              : t("We couldn't find the request you're looking for.", "لم نتمكن من العثور على الطلب.")}
-          </p>
-          <Link
-            to="/adoption-requests"
-            className="px-6 py-2 bg-[#3C7A57] text-white rounded-xl font-bold"
-          >
-            {t("Go to My Requests", "الذهاب لطلباتي")}
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const appData = application;
-  const pet = appData?.pet;
+  const appData = application?.data || application;
+  const pet = appData?.pet || {};
   const status = String(appData?.status || "").toLowerCase();
 
-  const getStatusInfo = (st) => {
-    switch (st) {
-      case "approved":
-        return {
-          icon: <CheckCircle2 className="text-green-500" size={18} />,
-          bg: "bg-green-50",
-          text: "text-green-700",
-          label: t("Approved", "مقبول"),
-        };
-      case "rejected":
-        return {
-          icon: <AlertCircle className="text-red-500" size={18} />,
-          bg: "bg-red-50",
-          text: "text-red-700",
-          label: t("Rejected", "مرفوض"),
-        };
-      default:
-        return {
-          icon: <Clock className="text-amber-500" size={18} />,
-          bg: "bg-amber-50",
-          text: "text-amber-700",
-          label: t("Pending", "قيد الانتظار"),
-        };
-    }
+  const handleCancelAction = async () => {
+    try {
+      await cancelRequest(id).unwrap();
+      setCancelDialogOpen(false);
+    } catch (err) { console.error("Cancel failed", err); }
   };
 
-  const statusInfo = getStatusInfo(status);
+  const statusMeta = (() => {
+    if (status === "approved") return { label: "Approved", short: "Your request has been approved.", icon: <CheckCircle2 size={18} className="text-emerald-600" />, pill: "bg-emerald-100 text-emerald-800 border-emerald-300", panel: "border-emerald-200 bg-emerald-50/60" };
+    if (status === "rejected") return { label: "Rejected", short: "Your request has been rejected.", icon: <XCircle size={18} className="text-red-600" />, pill: "bg-red-100 text-red-800 border-red-300", panel: "border-red-200 bg-red-50/60" };
+    if (status === "canceled" || status === "cancelled") return { label: "Canceled", short: "You have canceled this request.", icon: <Trash2 size={18} className="text-slate-600" />, pill: "bg-slate-100 text-slate-600 border-slate-300", panel: "border-slate-200 bg-slate-50/60" };
+    return { label: "Pending", short: "Your request is being reviewed.", icon: <Clock size={18} className="text-amber-600" />, pill: "bg-orange-100 text-orange-800 border-orange-300", panel: "border-amber-200 bg-amber-50/60" };
+  })();
+
+  if (isLoading) return <div className="min-h-screen bg-[#FDFCFB]"><Navbar /><div className="flex items-center justify-center h-[60vh] animate-pulse text-[#387365]">Loading details...</div></div>;
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
+    <div className="min-h-screen bg-[#FDFCFB]">
       <Navbar />
-
-      <main className="mx-auto max-w-5xl px-4 md:px-8 pt-6 pb-20">
-        <header className="mb-7 rounded-xl border border-[#E7DCD0] bg-[#F7F3F0] p-4 sm:p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Link
-                to="/adoption-requests"
-                className="h-9 w-9 rounded-full bg-white shadow-sm border border-[#E7DCD0] inline-flex items-center justify-center transition-colors hover:bg-white/80"
-              >
-                <ArrowLeft size={18} className={isAr ? "rotate-180" : ""} />
-              </Link>
-              <div>
-                <h1 className="text-lg font-extrabold text-[#2F2A24]">
-                  {t("Request Details", "تفاصيل الطلب")}
-                </h1>
-                <p className="text-[11px] font-medium text-[#8C8276]">
-                  ID: #{id} •{" "}
-                  {appData.created_at
-                    ? new Date(appData.created_at).toLocaleDateString(isAr ? "ar-EG" : "en-US")
-                    : ""}
-                </p>
-              </div>
+      <main className="pt-8 pb-12 px-4 md:px-6">
+        <div className="mx-auto max-w-6xl">
+          <header className="relative bg-[#387365] p-6 md:p-10 rounded-xl shadow-md flex flex-col justify-between overflow-hidden mb-8 border-b-4 border-[#2d5c51]">
+            <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none"><HeartHandshake className="w-64 h-64 text-white" /></div>
+            <div className="z-10">
+              <button onClick={() => navigate("/adoption-requests")} className="flex items-center gap-2 text-white/90 font-bold hover:text-white transition-colors text-xs mb-3 rounded-lg border border-white/15 bg-white/10 px-3 py-2">
+                <ArrowLeft className="w-3.5 h-3.5" /> <span>Back to Requests</span>
+              </button>
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Request Details</h1>
+              <p className="text-white/80 text-sm mt-1 font-medium italic">#{id} • {formatDate(appData?.created_at, true)}</p>
             </div>
+          </header>
 
-            <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border border-current/10 ${statusInfo.bg} ${statusInfo.text}`}
-            >
-              {statusInfo.icon}
-              <span className="text-xs font-bold">{statusInfo.label}</span>
-            </div>
-          </div>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-6">
-            <div className="rounded-2xl border border-[#E7DCD0] bg-white shadow-sm overflow-hidden">
-              <div className="aspect-square bg-[#FBF7F1] relative">
-                {pet?.cover_image || pet?.image_url ? (
-                  <img
-                    src={pet?.cover_image || pet?.image_url}
-                    alt={pet?.name}
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center text-[#E7DCD0]">
-                    <Heart size={48} />
-                  </div>
-                )}
-              </div>
-              <div className="p-5">
-                <h3 className="text-lg font-black text-[#2F2A24] mb-3">
-                  {pet?.name || t("Pet Name", "اسم الحيوان")}
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-[#2F2A24]/70">
-                    <Info size={14} className="text-[#3C7A57]" />
-                    <span className="font-bold">{t("Breed:", "السلالة:")}</span>
-                    <span>{pet?.breed || t("Not specified", "غير محدد")}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-[#2F2A24]/70">
-                    <Calendar size={14} className="text-[#3C7A57]" />
-                    <span className="font-bold">{t("Age:", "العمر:")}</span>
-                    <span>{pet?.age || t("Not specified", "غير محدد")}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <div className="rounded-2xl border-2 border-[#D1C2B4] bg-white shadow-sm overflow-hidden">
+                <img src={pet?.cover_image || "/placeholder.png"} className="aspect-square w-full object-cover bg-[#FBF7F1]" />
+                <div className="p-5">
+                  <h3 className="text-lg font-black text-[#2F2A24]">{pet?.name || "Pet"}</h3>
+                  <div className="mt-3 space-y-2 text-xs font-bold text-[#2F2A24]/75">
+                    <div className="flex items-center gap-2"><UserRound size={14} className="text-[#387365]" /> Gender: {pet?.gender}</div>
+                    <div className="flex items-center gap-2"><Calendar size={14} className="text-[#387365]" /> Age: {calcAgeYears(pet?.date_of_birth)}</div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-2xl border border-[#E7DCD0] bg-white shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <MessageSquare className="text-[#3C7A57]" size={20} />
-                <h2 className="font-extrabold text-[#2F2A24]">{t("Your Motivation", "سبب التبنّي")}</h2>
-              </div>
-              <div className="bg-[#FBF7F1] border border-[#E7DCD0]/40 rounded-xl p-4">
-                <p className="text-sm leading-relaxed text-[#2F2A24]/80 whitespace-pre-wrap">
-                  {appData?.motivation || t("No message provided.", "لا يوجد رسالة مرفقة.")}
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[#E7DCD0] bg-white shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Clock className="text-[#3C7A57]" size={20} />
-                <h2 className="font-extrabold text-[#2F2A24]">{t("Update History", "تاريخ التحديث")}</h2>
-              </div>
-
-              <div className="relative border-l-2 border-[#E7DCD0] ml-3 pr-4 space-y-6 py-2">
-                <div className="relative">
-                  <div className="absolute -left-[25px] h-3 w-3 rounded-full bg-green-500 border-2 border-white shadow-sm"></div>
-                  <p className="text-[11px] font-bold text-[#3C7A57]">
-                    {t("Application Submitted", "تم إرسال الطلب")}
-                  </p>
-                  <p className="text-[10px] text-[#8C8276]">
-                    {appData.created_at
-                      ? new Date(appData.created_at).toLocaleString(isAr ? "ar-EG" : "en-US")
-                      : ""}
-                  </p>
+            <div className="lg:col-span-2 space-y-6">
+              <div className="rounded-2xl border-2 border-[#D1C2B4] bg-white p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2"><Clock className="text-[#387365]" size={20} /><h2 className="font-extrabold text-[#2F2A24]">Status Tracking</h2></div>
+                  <Badge className={`rounded-full border-2 px-4 py-1.5 text-[11px] font-extrabold uppercase ${statusMeta.pill}`}>{statusMeta.label}</Badge>
+                </div>
+                
+                <div className={`rounded-xl border-2 p-4 ${statusMeta.panel} mb-6 flex items-start gap-3`}>
+                  {statusMeta.icon}
+                  <div><p className="text-[11px] font-extrabold uppercase tracking-widest text-[#2F2A24]/50">Notification</p><p className="text-sm font-bold">{statusMeta.short}</p></div>
                 </div>
 
-                {status !== "pending" && (
-                  <div className="relative">
-                    <div
-                      className={`absolute -left-[25px] h-3 w-3 rounded-full border-2 border-white shadow-sm ${
-                        status === "approved" ? "bg-green-500" : "bg-red-500"
-                      }`}
-                    ></div>
-                    <p className="text-[11px] font-bold text-[#2F2A24]">
-                      {status === "approved"
-                        ? t("Request Approved", "تمت الموافقة على الطلب")
-                        : t("Request Rejected", "تم رفض الطلب")}
-                    </p>
-                    <p className="text-[10px] text-[#8C8276]">
-                      {appData.updated_at
-                        ? new Date(appData.updated_at).toLocaleString(isAr ? "ar-EG" : "en-US")
-                        : ""}
-                    </p>
-                  </div>
+                {status === "pending" && (
+                  <Button onClick={() => setCancelDialogOpen(true)} className="w-full h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold gap-2 shadow-md transition-all">
+                    <XCircle size={18} /> Cancel Adoption Request
+                  </Button>
                 )}
+              </div>
+
+              <div className="rounded-2xl border-2 border-[#D1C2B4] bg-white p-6">
+                <div className="flex items-center gap-2 mb-4"><MessageSquare className="text-[#387365]" size={20} /><h2 className="font-extrabold text-[#2F2A24]">Your Motivation</h2></div>
+                <p className="text-sm bg-[#FBF7F1] p-4 rounded-xl border border-[#D1C2B4]/60 whitespace-pre-wrap">{appData?.motivation || "No motivation provided."}</p>
               </div>
             </div>
           </div>
         </div>
       </main>
+
+      {/* Confirmation Dialog (Same style as homepage) */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogOverlay className="bg-black/40 backdrop-blur-[2px]" />
+        <DialogContent className="z-[200] rounded-xl max-w-sm p-6 border border-slate-300 shadow-2xl bg-white text-center outline-none">
+          <div className="mx-auto h-12 w-12 rounded-full bg-red-50 flex items-center justify-center mb-4 border border-red-100">
+            <Trash2 className="h-6 w-6 text-red-600" />
+          </div>
+          <DialogTitle className="text-lg font-bold mb-2 text-[#2F2A24]">Confirm Cancellation</DialogTitle>
+          <DialogDescription className="text-slate-500 text-sm mb-6">Are you sure you want to cancel this adoption request? This action cannot be undone.</DialogDescription>
+          <div className="flex flex-col gap-2">
+            <Button onClick={handleCancelAction} disabled={isCancelling} className="w-full h-11 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold">
+              {isCancelling ? "Processing..." : "Confirm & Cancel"}
+            </Button>
+            <Button variant="ghost" onClick={() => setCancelDialogOpen(false)} className="w-full h-10 text-slate-400 font-medium">Go Back</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

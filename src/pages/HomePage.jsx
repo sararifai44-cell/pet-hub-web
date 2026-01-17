@@ -1,19 +1,13 @@
 // src/pages/HomePage.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import {
-  HeartHandshake,
-  ShoppingBag,
-  Hotel,
-  Stethoscope,
-  ArrowRight,
-  ShieldCheck,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  Camera,
-} from "lucide-react";
-import { PawPrint, CalendarCheck2 } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Camera } from "lucide-react";
+
+import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
+import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import SentimentVerySatisfiedRoundedIcon from "@mui/icons-material/SentimentVerySatisfiedRounded";
+import PetsRoundedIcon from "@mui/icons-material/PetsRounded";
+import MoodIcon from '@mui/icons-material/Mood';
 import Navbar from "@/components/common/Navbar";
 import SplitText from "@/components/common/SplitText";
 
@@ -26,9 +20,6 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-
-// ✅ medical services hook (appointment categories)
-import { useGetAppointmentCategoriesQuery } from "@/features/appointments/appointmentsApiSlice";
 
 function CenterGallerySlider({ images = [] }) {
   const [idx, setIdx] = useState(0);
@@ -60,7 +51,6 @@ function CenterGallerySlider({ images = [] }) {
       >
         {images.map((src, i) => (
           <div key={src + i} className="w-full flex-none">
-            {/* ✅ responsive فقط: على الموبايل نخليها نسبة أقرب للمربع لتجنب طول زائد */}
             <div className="aspect-[14/15] sm:aspect-[14/15] w-full">
               <img
                 src={src}
@@ -116,8 +106,7 @@ function CenterGallerySlider({ images = [] }) {
   );
 }
 
-/* ✅ NEW: Medical Services Slider */
-function MedicalServicesSlider({ items = [] }) {
+function HappyStoriesSlider({ items = [] }) {
   const trackRef = useRef(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(true);
@@ -154,9 +143,11 @@ function MedicalServicesSlider({ items = [] }) {
     const el = trackRef.current;
     if (!el) return;
 
-    const amount = Math.max(260, Math.floor(el.clientWidth * 0.85));
+    const amount = Math.max(280, Math.floor(el.clientWidth * 0.85));
     el.scrollBy({ left: dir * amount, behavior: "smooth" });
   };
+
+  if (!items?.length) return null;
 
   return (
     <div className="relative">
@@ -173,7 +164,7 @@ function MedicalServicesSlider({ items = [] }) {
           shadow-sm
           max-sm:-left-1 max-sm:h-9 max-sm:w-9
         "
-        aria-label="Previous services"
+        aria-label="Previous stories"
       >
         <ChevronLeft className="h-5 w-5 max-sm:h-4 max-sm:w-4" />
       </button>
@@ -190,7 +181,7 @@ function MedicalServicesSlider({ items = [] }) {
           shadow-sm
           max-sm:-right-1 max-sm:h-9 max-sm:w-9
         "
-        aria-label="Next services"
+        aria-label="Next stories"
       >
         <ChevronRight className="h-5 w-5 max-sm:h-4 max-sm:w-4" />
       </button>
@@ -211,12 +202,12 @@ function MedicalServicesSlider({ items = [] }) {
           .hide-scrollbar::-webkit-scrollbar { display: none; }
         `}</style>
 
-        {items.map((c) => (
+        {items.map((s) => (
           <Link
-            key={c.id}
-            to="/my-appointments"
-            className="snap-start shrink-0 w-[280px] max-sm:w-[85vw]"
-            aria-label={`Book ${c?.name ?? "service"}`}
+            key={s.id}
+            to="/pets"
+            className="snap-start shrink-0 w-[320px] max-sm:w-[85vw]"
+            aria-label={`View story of ${s.name}`}
           >
             <Card
               className="
@@ -227,37 +218,50 @@ function MedicalServicesSlider({ items = [] }) {
                 md:hover:-translate-y-2 md:hover:shadow-2xl md:hover:shadow-black/10
               "
             >
-              <CardHeader className="p-6 pb-3 max-sm:p-5 max-sm:pb-3">
+              <div className="relative h-44 overflow-hidden max-sm:h-40">
+                <img
+                  src={s.image}
+                  alt={`${s.name} adopted`}
+                  className="
+                    h-full w-full object-cover
+                    transition-transform duration-700 ease-out
+                    md:group-hover:scale-110
+                  "
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/10 to-transparent" />
+              </div>
+
+              <CardHeader className="p-6 pb-4 max-sm:p-5 max-sm:pb-4">
                 <div className="flex items-start gap-4">
-                  <div className="h-11 w-11 rounded-2xl bg-green-800/10 border border-green-800/15 flex items-center justify-center">
-                    <Stethoscope className="h-5 w-5 text-green-800" />
+                  <div className="flex items-center justify-center">
+                    <MoodIcon className="text-violet-600 text-[20px]" />
                   </div>
 
                   <div className="min-w-0">
                     <CardTitle className="text-xl font-bold text-[#2F2A24] max-sm:text-lg truncate">
-                      {c?.name ?? `#${c.id}`}
+                      {s.name}
                     </CardTitle>
+
                     <CardDescription className="mt-2 text-sm text-[#2F2A24]/65 leading-relaxed line-clamp-2">
-                      Tap to book this service from your appointments page.
+                      {s.caption}
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
 
-              <CardContent className="p-6 pt-0 max-sm:p-5 max-sm:pt-0">
-                <div className="flex items-center justify-between gap-3">
-                 
+              <CardContent className="px-6 pb-6 pt-0 max-sm:px-5 max-sm:pb-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#2F2A24]/70">
+                    <HomeRoundedIcon className="text-sky-600 text-[18px]" />
+                    <span className="truncate">{s.newHome}</span>
+                  </div>
 
-                  <span
-                    className="
-                      inline-flex items-center gap-2
-                      text-[12px] font-black uppercase tracking-[0.15em]
-                      text-green-800
-                    "
-                  >
-                    Book
-                    <ArrowRight className="h-4 w-4 transition-transform duration-300 md:group-hover:translate-x-1.5" />
-                  </span>
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#2F2A24]/70">
+                    <FavoriteRoundedIcon className="text-rose-500 text-[18px]" />
+                    <span>Adopted</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -288,14 +292,14 @@ export default function HomePage() {
       title: "Hotel",
       desc: "Safe and cozy stay while you’re away.",
       accent: "#60A5FA",
-      to: "/hotel",
+      to:  "/boarding",
       img: "/hotel.jpg",
     },
     {
       title: "Vet Care",
       desc: "Guidance, checkups, and trusted clinics.",
       accent: "#FB7185",
-      to: "/vet",
+      to:  "/medical-care",
       img: "/vet.jpg",
     },
   ];
@@ -307,16 +311,40 @@ export default function HomePage() {
     "/cute-dog-with-owner-pet-shop.jpg",
   ];
 
-  // ✅ fetch medical services (appointment categories)
-  const {
-    data: catsRes,
-    isLoading: loadingCats,
-    isError: catsError,
-  } = useGetAppointmentCategoriesQuery();
-
-  const medicalServices = Array.isArray(catsRes?.data)
-    ? catsRes.data.filter((c) => c?.is_active !== false)
-    : [];
+  const happyStories = [
+    {
+      id: 1,
+      name: "John",
+      caption:
+        "John found his forever family — now he owns everyone’s heart",
+      newHome: "Damascus • Cozy home",
+      image: "/photo_2026-01-16_23-35-17.jpg",
+    },
+    {
+      id: 2,
+      name: "Max",
+      caption:
+        "From shy to super social — Max loves his daily park walks.",
+      newHome: "Damascus •  new home",
+      image: "/photo_2026-01-03_13-58-58.jpg",
+    },
+    {
+      id: 3,
+      name: "Milo",
+      caption:
+        "Milo was adopted last month and is already best friends with the kids.",
+      newHome: "Damascus • New family ",
+      image: "/photo_2026-01-03_14-06-11.jpg",
+    },
+    {
+      id: 4,
+      name: "Nala",
+      caption:
+        "Nala’s new favorite thing:sun naps by the window .",
+      newHome: "Damascus • Cozy apartment",
+      image: "/photo_2026-01-16_23-30-14.jpg",
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-[#FBF7F1] text-[#2F2A24]">
@@ -337,7 +365,6 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-black/25" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/15 to-[#e4e1dba9]" />
 
-          {/* ✅ responsive فقط: px + grid gap + padding */}
           <div className="relative mx-auto max-w-6xl px-4 md:px-6">
             <div className="grid min-h-[92vh] items-center gap-10 py-14 md:grid-cols-2 max-sm:gap-8 max-sm:py-10">
               <div className="text-white">
@@ -386,7 +413,6 @@ export default function HomePage() {
         </section>
 
         {/* SERVICES */}
-        {/* ✅ responsive فقط: py */}
         <section className="mx-auto max-w-6xl px-4 py-16 md:px-6 max-sm:py-12">
           <Separator className="mb-15 max-w-6xl bg-[#E7DCD0]" />
 
@@ -466,51 +492,6 @@ export default function HomePage() {
 
         <Separator className="mx-auto max-w-6xl bg-[#E7DCD0]" />
 
-        {/* ✅ MEDICAL SERVICES (Slider) */}
-        <section className="mx-auto max-w-6xl px-4 py-14 md:px-6 max-sm:py-12">
-          <div className="mb-10 flex flex-col items-center text-center gap-3 max-sm:mb-8">
-         
-
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-[#2F2A24] max-sm:text-2xl">
-              Book trusted care for your pet
-            </h2>
-
-            <p className="max-w-2xl text-sm md:text-base text-[#2F2A24]/70">
-              Quick appointment requests for our center’s medical services — simple, fast, and friendly.
-            </p>
-
-           
-          </div>
-
-          {loadingCats ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-3xl border border-[#E7DCD0]/70 bg-white/70 p-6 animate-pulse"
-                >
-                  <div className="h-10 w-10 rounded-2xl bg-[#E7DCD0]/60" />
-                  <div className="mt-4 h-4 w-2/3 rounded bg-[#E7DCD0]/60" />
-                  <div className="mt-2 h-3 w-full rounded bg-[#E7DCD0]/40" />
-                  <div className="mt-2 h-3 w-5/6 rounded bg-[#E7DCD0]/40" />
-                </div>
-              ))}
-            </div>
-          ) : catsError ? (
-            <div className="text-center text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl p-5">
-              Failed to load medical services.
-            </div>
-          ) : medicalServices.length === 0 ? (
-            <div className="text-center text-sm text-[#2F2A24]/70 bg-white/60 border border-[#E7DCD0]/70 rounded-2xl p-6">
-              No active medical services right now.
-            </div>
-          ) : (
-            <MedicalServicesSlider items={medicalServices} />
-          )}
-        </section>
-
-        <Separator className="mx-auto max-w-6xl bg-[#E7DCD0]" />
-
         {/* ABOUT US */}
         <section className="mx-auto max-w-6xl px-4 py-10 md:px-6 max-sm:py-10">
           <div className="mb-12 flex flex-col items-center text-center space-y-4 max-sm:mb-10">
@@ -522,26 +503,12 @@ export default function HomePage() {
             >
               Not just a shelter, <br className="hidden md:block" />
               but a <span className="text-green-800">home</span> until they find{" "}
-              <span className="text-green-800 relative">
-                yours.
-                <svg
-                  className="absolute -bottom-2 left-0 w-full h-2 text-green-800/20"
-                  viewBox="0 0 100 10"
-                  preserveAspectRatio="none"
-                >
-                  <path
-                    d="M0 5 Q 25 0 50 5 T 100 5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                </svg>
-              </span>
+              <span className="text-green-800">yours.</span>
             </h2>
           </div>
 
           <div className="grid items-start gap-12 lg:grid-cols-2 max-sm:gap-10">
-            {/* الجهة اليسرى: السلايدر */}
+            {/* left: slider */}
             <div className="order-2 lg:order-1">
               <div className="relative overflow-hidden rounded-[2.5rem] border border-stone-100 shadow-sm transition-transform duration-500 hover:shadow-md">
                 <CenterGallerySlider images={centerGallery} />
@@ -556,7 +523,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* الجهة اليمنى: الفقرات المرقمة */}
             <div className="order-1 lg:order-2 space-y-6">
               <div className="space-y-4">
                 {[
@@ -606,26 +572,45 @@ export default function HomePage() {
                 ))}
               </div>
 
-              {/* الأزرار */}
+              {/* buttons */}
               <div className="pt-4 flex flex-wrap items-center gap-6 justify-center lg:justify-start max-sm:gap-4">
                 <Button
                   asChild
                   className="h-14 px-10 rounded-full bg-green-800 hover:bg-green-900 text-white shadow-lg transition-all hover:-translate-y-1 active:scale-95 font-bold
                   max-sm:h-12 max-sm:px-8"
                 >
-                  <Link to="/about">Our Story</Link>
+                  <Link to="/pets">Explore Adoption</Link>
                 </Button>
 
-                <Link
-                  to="/pets"
-                  className="group/link flex items-center gap-2 font-bold text-green-800 text-sm uppercase tracking-widest transition-all hover:gap-4"
-                >
-                  Explore Adoption
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
-                </Link>
+              
               </div>
             </div>
           </div>
+        </section>
+
+        <Separator className="mx-auto max-w-6xl bg-[#E7DCD0]" />
+
+        <section className="mx-auto max-w-6xl px-4 py-14 md:px-6 max-sm:py-12">
+          <div className="mb-10 flex flex-col items-center text-center gap-3 max-sm:mb-8">
+            
+
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-[#2F2A24] max-sm:text-2xl">
+              Happy stories from our center
+            </h2>
+
+            <p className="max-w-2xl text-sm md:text-base text-[#2F2A24]/70">
+              Real adoptions, real joy — meet some pets who found their forever
+              homes.
+            </p>
+          </div>
+
+          {happyStories.length === 0 ? (
+            <div className="text-center text-sm text-[#2F2A24]/70 bg-white/60 border border-[#E7DCD0]/70 rounded-2xl p-6">
+              No stories yet — coming soon.
+            </div>
+          ) : (
+            <HappyStoriesSlider items={happyStories} />
+          )}
         </section>
       </main>
     </div>

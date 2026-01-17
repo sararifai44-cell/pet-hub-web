@@ -5,32 +5,52 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { HeartHandshake, ArrowLeft, Calendar, VenusAndMars } from "lucide-react";
+import {
+  HeartHandshake,
+  ArrowLeft,
+  Calendar,
+  VenusAndMars,
+  PawPrint,
+} from "lucide-react";
 
 import { useGetPetByIdQuery } from "@/features/pets/petsApiSlice";
 import { useCreateAdoptionApplicationMutation } from "@/features/adoptionApplications/adoptionApplicationsApiSlice";
 
 import { getToken } from "@/app/apiSlice";
 
-// ✅ Dialog (shadcn/ui)
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+const headerPets = ["/cat.jpg", "/bird.jpg", "/h3-cat-pet-container.jpg"];
 
-function useIsArabic() {
-  const lang =
-    typeof window !== "undefined" ? (navigator.language || "").toLowerCase() : "en";
-  return lang.startsWith("ar");
+function formatDate(dt) {
+  if (!dt) return "—";
+  try {
+    return new Date(dt).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+function calcAgeYears(dateOfBirth) {
+  if (!dateOfBirth) return "—";
+  try {
+    const dob = new Date(dateOfBirth);
+    const now = new Date();
+    let years = now.getFullYear() - dob.getFullYear();
+    const m = now.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) years -= 1;
+    if (years < 0) years = 0;
+    return `${years} years`;
+  } catch {
+    return "—";
+  }
 }
 
 export default function AdoptionApplicationPage() {
-  const isAr = useIsArabic();
-  const t = (en, ar) => (isAr ? ar : en);
+  // English-only UI
+  const isAr = false;
 
   const { id } = useParams();
   const petId = Number(id);
@@ -40,35 +60,40 @@ export default function AdoptionApplicationPage() {
   const hasSubmittedAuto = useRef(false);
 
   const { data: pet, isLoading } = useGetPetByIdQuery(petId, { skip: !petId });
-  const [createApp, { isLoading: submitting }] = useCreateAdoptionApplicationMutation();
+  const [createApp, { isLoading: submitting }] =
+    useCreateAdoptionApplicationMutation();
+
   const [motivation, setMotivation] = useState("");
 
   const canSubmit = motivation.trim().length >= 10 && !!petId;
 
-  // ===================== ✅ AUTH DIALOG =====================
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
-  const [authFrom, setAuthFrom] = useState("");
-  const [pendingAdoption, setPendingAdoption] = useState(null);
-
   const isAuthError = (err) => {
     const status = err?.status ?? err?.originalStatus;
     const msg = err?.data?.message ?? err?.data?.error ?? err?.error ?? "";
-    return status === 401 || status === 403 || /unauthenticated|unauthorized|login/i.test(String(msg));
+    return (
+      status === 401 ||
+      status === 403 ||
+      /unauthenticated|unauthorized|login/i.test(String(msg))
+    );
   };
 
-  const openAuthDialog = useCallback(
+  const redirectToLogin = useCallback(
     (motText) => {
       const from = location?.pathname + (location?.search || "");
-      setAuthFrom(from);
-      setPendingAdoption({
-        pet_id: petId,
-        motivation: (motText ?? motivation).trim(),
+      navigate("/login", {
+        replace: true,
+        state: {
+          from,
+          pendingAdoption: {
+            pet_id: petId,
+            motivation: (motText ?? motivation).trim(),
+          },
+          shouldAutoSubmit: true,
+        },
       });
-      setAuthDialogOpen(true);
     },
-    [location?.pathname, location?.search, petId, motivation]
+    [navigate, location?.pathname, location?.search, petId, motivation]
   );
-  // ==========================================================
 
   useEffect(() => {
     if (
@@ -81,10 +106,9 @@ export default function AdoptionApplicationPage() {
 
       hasSubmittedAuto.current = true;
 
-      // ✅ بدل Cookies.get("token") -> getToken()
       const token = getToken();
       if (!token) {
-        openAuthDialog(savedMotivation);
+        redirectToLogin(savedMotivation);
         window.history.replaceState({}, document.title);
         return;
       }
@@ -102,18 +126,18 @@ export default function AdoptionApplicationPage() {
         motivation: motivationText.trim(),
       }).unwrap();
 
-      toast.success(isAr ? "تم إرسال طلب التبنّي بنجاح" : "Application submitted successfully!");
+      toast.success("Application submitted successfully!");
       navigate(`/adoption-requests/${result.id || result.data?.id}`);
     } catch (err) {
       const serverMessage = err?.data?.message || err?.data?.error;
 
       if (isAuthError(err)) {
-        openAuthDialog(motivationText);
+        redirectToLogin(motivationText);
         return;
       }
 
       if (serverMessage) toast.error(serverMessage);
-      else toast.error(isAr ? "حدث خطأ في السيرفر" : "Internal Server Error");
+      else toast.error("Internal Server Error");
     }
   };
 
@@ -121,14 +145,13 @@ export default function AdoptionApplicationPage() {
     if (e) e.preventDefault();
 
     if (!canSubmit) {
-      toast.error(isAr ? "اكتب سبب التبنّي (على الأقل 10 أحرف)" : "Please write your motivation");
+      toast.error("Please write your motivation (min 10 characters).");
       return;
     }
 
-    // ✅ بدل Cookies.get("token") -> getToken()
     const token = getToken();
     if (!token) {
-      openAuthDialog(motivation);
+      redirectToLogin(motivation);
       return;
     }
 
@@ -142,90 +165,122 @@ export default function AdoptionApplicationPage() {
       pet?.image ||
       pet?.image_url ||
       null;
+
     return typeof first === "string" ? first : first?.url || null;
   }, [pet]);
+
+  const genderLabel = String(pet?.gender || "—");
+  const dobLabel = formatDate(pet?.date_of_birth);
+  const ageLabel = calcAgeYears(pet?.date_of_birth);
 
   return (
     <div className="min-h-screen bg-[#FDFCFB]" dir={isAr ? "rtl" : "ltr"}>
       <Navbar />
 
-      <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle className="text-base font-extrabold">
-              {t("Login required", "تسجيل الدخول مطلوب")}
-            </DialogTitle>
-            <DialogDescription className="text-sm">
-              {t("You need to login first to continue.", "لازم تسجل دخول أولاً لتكمل.")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="outline" onClick={() => setAuthDialogOpen(false)} className="rounded-xl">
-              {t("Cancel", "إلغاء")}
-            </Button>
-
-            <Button
-              onClick={() => {
-                setAuthDialogOpen(false);
-                navigate("/login", {
-                  replace: true,
-                  state: {
-                    from: authFrom,
-                    pendingAdoption: pendingAdoption || { pet_id: petId, motivation: motivation.trim() },
-                  },
-                });
-              }}
-              className="rounded-xl bg-[#3C7A57] hover:bg-[#2F5F43] text-white"
-            >
-              {t("Go to Login", "تسجيل الدخول")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <main className="mx-auto max-w-7xl px-4 md:px-8 pt-6 pb-20">
-        <header className="mb-8 py-5 px-8 rounded-xl bg-[#F7F3F0] border border-[#E7DCD0]/50 relative flex flex-row items-center justify-between overflow-hidden">
-          <div className="relative z-10 space-y-1">
-            <h1 className="text-xl md:text-2xl font-semibold text-[#2F2A24]">
-              {t("Adoption Application", "طلب تبنّي")}
-              <span className="text-[#3C7A57]">{t(" • simple & quick", " • سريع وبسيط")}</span>
+        {/* Header (theme-matched + responsive) */}
+        <header className="relative bg-[#387365] p-6 md:p-10 rounded-xl shadow-md flex flex-col md:flex-row md:items-center justify-between overflow-hidden mb-8 border-b-4 border-[#2d5c51]">
+          <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+            <HeartHandshake className="w-64 h-64 text-white" />
+          </div>
+
+          <div className="z-10">
+            <button
+              onClick={() => navigate("/pets")}
+              className="
+              flex items-center gap-2 text-white/90 font-bold hover:text-white transition-colors w-fit group text-xs mb-3
+                      rounded-lg border border-white/15 bg-white/10 px-3 py-2 hover:bg-white/15
+              "
+            >
+              <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
+              <span>Back to Pets</span>
+            </button>
+
+            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+              Adoption Application{" "}
+              <span className="text-white/85">• simple & quick</span>
             </h1>
-            <p className="text-[#8C8276] text-[11px] font-medium">
-              {t("Tell us why you’d like to adopt, and we’ll review your request.", "اكتبي سبب التبنّي وسنقوم بمراجعة الطلب.")}
+
+            <p className="text-white/80 text-sm mt-1 font-medium max-w-xl">
+              Tell us why you’d like to adopt, and we’ll review your request.
             </p>
           </div>
-          <div className="shrink-0">
-            <img src="/pethub-logo (2).png" alt="PetHub" className="h-14 md:h-18 w-auto object-contain" />
+
+          <div className="flex items-center gap-4 z-10 mt-5 md:mt-0">
+            <div className="hidden lg:flex -space-x-3">
+              {headerPets.map((url, i) => (
+                <img
+                  key={i}
+                  src={url}
+                  className="w-12 h-12 rounded-full border-2 border-white shadow-xl object-cover"
+                  alt="pet"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ))}
+            </div>
           </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          {/* Left: Pet summary */}
           <aside className="lg:col-span-2 space-y-4">
-            <Card className="rounded-2xl border border-[#E7DCD0] bg-white shadow-sm overflow-hidden">
-              <div className="aspect-[4/3] w-full bg-[#FBF7F1]">
+            <Card className="rounded-2xl border-2 border-[#D1C2B4] bg-white shadow-sm overflow-hidden">
+              <div className="aspect-[4/3] w-full bg-[#FBF7F1] relative">
                 {imgSrc ? (
-                  <img src={imgSrc} alt={pet?.name} className="h-full w-full object-contain" />
+                  <img
+                    src={imgSrc}
+                    alt={pet?.name || "pet"}
+                    className="h-full w-full object-contain"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 ) : (
-                  <div className="h-full w-full grid place-items-center text-[#E7DCD0] font-semibold">
-                    {t("No image", "لا يوجد صورة")}
+                  <div className="h-full w-full grid place-items-center text-[#2F2A24]/35 font-semibold">
+                    <div className="flex flex-col items-center gap-2">
+                      <PawPrint className="h-8 w-8" />
+                      <span>No image</span>
+                    </div>
                   </div>
                 )}
               </div>
+
               <CardContent className="p-5">
                 {isLoading ? (
-                  <div className="animate-pulse text-[#3C7A57]">{t("Loading...", "جاري التحميل...")}</div>
+                  <div className="animate-pulse text-[#3C7A57] font-semibold">
+                    Loading...
+                  </div>
                 ) : (
                   <>
-                    <div className="text-lg font-extrabold text-[#2F2A24]">{pet?.name}</div>
-                    <div className="mt-2 space-y-2 text-[12px] text-[#2F2A24]/70">
+                    <div className="text-lg font-extrabold text-[#2F2A24] truncate">
+                      {pet?.name || "Pet"}
+                    </div>
+
+                    <div className="mt-3 space-y-2 text-[12px] text-[#2F2A24]/70">
                       <div className="flex items-center gap-2">
-                        <VenusAndMars className="h-4 w-4" />
-                        <span>{pet?.gender}</span>
+                        <VenusAndMars className="h-4 w-4 text-[#387365]" />
+                        <span className="font-bold text-[#2F2A24]/80">
+                          Gender:
+                        </span>
+                        <span className="capitalize">{genderLabel}</span>
                       </div>
+
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>{pet?.age}</span>
+                        <Calendar className="h-4 w-4 text-[#387365]" />
+                        <span className="font-bold text-[#2F2A24]/80">
+                          DOB:
+                        </span>
+                        <span>{dobLabel}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#387365]/15 text-[#387365] text-[10px] font-extrabold">
+                          Y
+                        </span>
+                        <span className="font-bold text-[#2F2A24]/80">
+                          Age:
+                        </span>
+                        <span>{ageLabel}</span>
                       </div>
                     </div>
                   </>
@@ -233,35 +288,77 @@ export default function AdoptionApplicationPage() {
               </CardContent>
             </Card>
 
-            <Button asChild variant="outline" className="w-full rounded-xl">
+            <Button
+              asChild
+              variant="outline"
+              className="w-full rounded-xl border-2 border-[#D1C2B4] bg-white hover:bg-[#FBF7F1]"
+            >
               <Link to="/pets">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                {t("Back", "رجوع")}
+                <ArrowLeft className="h-4 h-4 mr-2" />
+                Back
               </Link>
             </Button>
           </aside>
 
+          {/* Right: Form */}
           <section className="lg:col-span-3">
-            <Card className="rounded-2xl border border-[#E7DCD0] bg-white shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-[#2F2A24] text-lg font-extrabold">{t("Your Motivation", "رسالتك")}</CardTitle>
+            <Card className="rounded-2xl border-2 border-[#D1C2B4] bg-white shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[#2F2A24] text-lg font-extrabold">
+                  Your Motivation
+                </CardTitle>
+                <p className="text-xs text-[#2F2A24]/60 mt-1">
+                  Minimum 10 characters. Be honest and clear.
+                </p>
               </CardHeader>
-              <CardContent className="p-6 pt-3">
+
+              <CardContent className="p-6 pt-4">
                 <form onSubmit={onSubmit} className="space-y-5">
-                  <textarea
-                    value={motivation}
-                    onChange={(e) => setMotivation(e.target.value)}
-                    rows={6}
-                    placeholder={t("Why do you want to adopt?", "لماذا تريد التبني؟")}
-                    className="w-full rounded-2xl border border-[#E7DCD0] bg-[#FBF7F1] p-4 text-sm outline-none focus:ring-2 focus:ring-[#3C7A57]/20 transition-all"
-                  />
+                  <div className="space-y-2">
+                    <textarea
+                      value={motivation}
+                      onChange={(e) => setMotivation(e.target.value)}
+                      rows={7}
+                      placeholder="Why do you want to adopt this pet?"
+                      className="
+                        w-full rounded-2xl border-2 border-[#D1C2B4]
+                        bg-[#FBF7F1] p-4 text-sm text-[#2F2A24]
+                        outline-none transition-all
+                        focus:ring-2 focus:ring-[#3C7A57]/20
+                        focus:border-[#3C7A57]/40
+                      "
+                    />
+
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span
+                        className={
+                          motivation.trim().length >= 10
+                            ? "text-emerald-700 font-semibold"
+                            : "text-[#2F2A24]/55"
+                        }
+                      >
+                        {motivation.trim().length >= 10
+                          ? "Looks good."
+                          : "Write at least 10 characters."}
+                      </span>
+
+                      <span className="text-[#2F2A24]/45">
+                        {motivation.trim().length} / 10+
+                      </span>
+                    </div>
+                  </div>
+
                   <Button
                     type="submit"
                     disabled={!canSubmit || submitting}
-                    className="h-11 rounded-xl bg-[#3C7A57] hover:bg-[#2F5F43] text-white w-full"
+                    className="
+                      h-11 w-full rounded-xl
+                      bg-[#3C7A57] hover:bg-[#2F5F43] text-white
+                      font-bold disabled:opacity-50
+                    "
                   >
                     <HeartHandshake className="h-4 w-4 mr-2" />
-                    {submitting ? t("Sending...", "جارٍ الإرسال...") : t("Submit", "إرسال الطلب")}
+                    {submitting ? "Sending..." : "Submit Application"}
                   </Button>
                 </form>
               </CardContent>

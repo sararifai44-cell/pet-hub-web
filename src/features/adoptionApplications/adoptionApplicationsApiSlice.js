@@ -39,6 +39,19 @@ export const adoptionApplicationsApiSlice = apiSlice.injectEndpoints({
       transformResponse: (res) => pickSingle(res),
       providesTags: (_res, _err, id) => [{ type: "AdoptionApplication", id }],
     }),
+
+    // إضافة ميزة الإلغاء هنا
+    // POST /api/my/adoption-applications/:id/cancel
+    cancelAdoptionApplication: builder.mutation({
+      query: (id) => ({
+        url: `my/adoption-applications/${id}/cancel`,
+        method: "PATCH", // حسب الرابط الذي أرسلته
+      }),
+      invalidatesTags: (_res, _err, id) => [
+        { type: "AdoptionApplication", id: "LIST" },
+        { type: "AdoptionApplication", id },
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -47,4 +60,5 @@ export const {
   useCreateAdoptionApplicationMutation,
   useGetMyAdoptionApplicationsQuery,
   useGetMyAdoptionApplicationByIdQuery,
+  useCancelAdoptionApplicationMutation, // تصدير الـ hook الجديد
 } = adoptionApplicationsApiSlice;
